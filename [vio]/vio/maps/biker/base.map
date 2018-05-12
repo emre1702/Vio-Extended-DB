@@ -1,0 +1,29 @@
+﻿<map edf:definitions="editor_main">
+    <object id="object (csrsfence03_lvs) (1)" doublesided="false" model="8673" interior="0" dimension="0" posX="-2222.23828125" posY="-2337.6220703125" posZ="32.585041046143" rotX="0" rotY="0" rotZ="319.99877929688" />
+    <object id="object (ab_warehouseShelf) (1)" doublesided="false" model="2567" interior="0" dimension="0" posX="-2226.8342285156" posY="-2305.2858886719" posZ="31.524559020996" rotX="0" rotY="0" rotZ="317.99377441406" />
+    <object id="object (vgsSstairs02_lvs) (1)" doublesided="false" model="8572" interior="0" dimension="0" posX="-2200.8493652344" posY="-2346.2580566406" posZ="31.77516746521" rotX="0" rotY="0" rotZ="319.98779296875" />
+    <object id="object (csrsfence03_lvs) (3)" doublesided="false" model="8673" interior="0" dimension="0" posX="-2215.9296875" posY="-2312.5576171875" posZ="32.684715270996" rotX="0" rotY="0" rotZ="319.99328613281" />
+    <object id="object (csrsfence03_lvs) (4)" doublesided="false" model="8673" interior="0" dimension="0" posX="-2206.27734375" posY="-2350.29296875" posZ="32.573822021484" rotX="0" rotY="0" rotZ="323.99230957031" />
+    <object id="object (pinetree03) (1)" doublesided="false" model="660" interior="0" dimension="0" posX="-2241.6328125" posY="-2323.6572265625" posZ="29.046405792236" rotX="0" rotY="0" rotZ="0" />
+    <object id="object (sm_veg_tree4) (1)" doublesided="false" model="669" interior="0" dimension="0" posX="-2238.7255859375" posY="-2326.4453125" posZ="29.247970581055" rotX="0" rotY="0" rotZ="0" />
+    <object id="object (sm_bushytree) (1)" doublesided="false" model="671" interior="0" dimension="0" posX="-2235.5029296875" posY="-2329.8115234375" posZ="29.496417999268" rotX="0" rotY="0" rotZ="353.99597167969" />
+    <object id="object (sm_fir_group) (1)" doublesided="false" model="683" interior="0" dimension="0" posX="-2232.341796875" posY="-2331.642578125" posZ="29.625" rotX="0" rotY="0" rotZ="0" />
+    <object id="object (Sfse_hublockup) (1)" doublesided="false" model="11326" interior="0" dimension="0" posX="-2201.5205078125" posY="-2328.50390625" posZ="31.919887542725" rotX="0" rotY="0" rotZ="139.99877929688" />
+    <object id="object (CJ_SKIP_Rubbish) (1)" doublesided="false" model="1358" interior="0" dimension="0" posX="-2221.9787597656" posY="-2309.1564941406" posZ="30.803716659546" rotX="0" rotY="0" rotZ="320" />
+    <object id="object (petrolcanm) (1)" doublesided="false" model="1650" interior="0" dimension="0" posX="-2244.6584472656" posY="-2316.0444335938" posZ="30.796453475952" rotX="0" rotY="0" rotZ="0" />
+    <object id="object (kmb_cam) (1)" doublesided="false" model="2921" interior="0" dimension="0" posX="-2185.9418945313" posY="-2340.1389160156" posZ="33.681774139404" rotX="0" rotY="0" rotZ="146" />
+    <object id="object (LOW_HI_FI_2) (1)" doublesided="false" model="2102" interior="0" dimension="0" posX="-2245.3342285156" posY="-2316.0251464844" posZ="31.187816619873" rotX="0" rotY="0" rotZ="109.99514770508" />
+    <object id="object (CJ_BEER_B_1) (1)" doublesided="false" model="1544" interior="0" dimension="0" posX="-2244.5803222656" posY="-2316.3041992188" posZ="30.489789962769" rotX="0" rotY="0" rotZ="0" />
+    <object id="object (DYN_WINE_BREAK) (1)" doublesided="false" model="1517" interior="0" dimension="0" posX="-2245.9416503906" posY="-2315.9653320313" posZ="30.589546203613" rotX="0" rotY="0" rotZ="0" />
+    <object id="object (DYN_BOXES) (1)" doublesided="false" model="1421" interior="0" dimension="0" posX="-2245.3134765625" posY="-2316.0317382813" posZ="30.450531005859" rotX="0" rotY="0" rotZ="0" />
+    <object id="object (petrolcanm) (2)" doublesided="false" model="1650" interior="0" dimension="0" posX="-2245.0510253906" posY="-2306.7629394531" posZ="31.219314575195" rotX="0" rotY="0" rotZ="0" />
+    <object id="object (CJ_GREENSHELVES) (1)" doublesided="false" model="2063" interior="0" dimension="0" posX="-2247.7121582031" posY="-2314.1767578125" posZ="30.754081726074" rotX="0" rotY="0" rotZ="145" />
+    <object id="object (DYN_ASHTRY) (1)" doublesided="false" model="1510" interior="0" dimension="0" posX="-2247.3034667969" posY="-2314.4450683594" posZ="30.696727752686" rotX="0" rotY="0" rotZ="0" />
+    <object id="object (Packing_carates1) (1)" doublesided="false" model="922" interior="0" dimension="0" posX="-2241.7341308594" posY="-2308.2043457031" posZ="30.690391540527" rotX="0" rotY="0" rotZ="319.99877929688" />
+    <object id="object (noparkingsign1) (1)" doublesided="false" model="1233" interior="0" dimension="0" posX="-2514.9643554688" posY="767.71484375" posZ="35.731555938721" rotX="0" rotY="0" rotZ="90" />
+    <object id="object (noparkingsign1) (2)" doublesided="false" model="1233" interior="0" dimension="0" posX="-2496.20703125" posY="789.55883789063" posZ="35.731555938721" rotX="0" rotY="0" rotZ="90" />
+    <object id="object (imoildrum4_LAS) (2)" doublesided="false" model="3633" interior="0" dimension="0" posX="-2245.0708007813" posY="-2306.3293457031" posZ="30.439651489258" rotX="0" rotY="0" rotZ="44.994506835938" />
+    <object id="object (Sfse_hublockup) (1)" doublesided="false" model="11326" interior="0" dimension="0" posX="-2238.0993652344" posY="-2297.2219238281" posZ="31.936262130737" rotX="0" rotY="0" rotZ="228" />
+    <object id="object (stuntramp7_las2) (1)" doublesided="false" model="5153" interior="0" dimension="0" posX="-2239.744140625" posY="-2314.3359375" posZ="29.354694366455" rotX="0" rotY="20" rotZ="138" />
+    <object id="object (stuntramp7_las2) (2)" doublesided="false" model="5153" interior="0" dimension="0" posX="-2241.505859375" posY="-2316.4018554688" posZ="29.379693984985" rotX="0" rotY="19.9951171875" rotZ="137.99926757813" />
+</map>

@@ -1,0 +1,32 @@
+﻿function mafiasettings ()
+
+	local mafia = "Mafia"
+	
+	MafiaFamkasse = tonumber(MySQL_GetString("fraktionen", "DepotGeld", "Name LIKE '" ..mafia.."'"))
+	
+	MafiaSchlagringe = tonumber(MySQL_GetString("fraktionswaffen", "Schlagringe", "Fraktion LIKE '" ..mafia.."'"))
+	MafiaBaseballschlaeger = tonumber(MySQL_GetString("fraktionswaffen", "Baseballschlaeger", "Fraktion LIKE '" ..mafia.."'"))
+	MafiaMesser = tonumber(MySQL_GetString("fraktionswaffen", "Messer", "Fraktion LIKE '" ..mafia.."'"))
+	MafiaSchaufeln = tonumber(MySQL_GetString("fraktionswaffen", "Schaufeln", "Fraktion LIKE '" ..mafia.."'"))
+	MafiaPistolen = tonumber(MySQL_GetString("fraktionswaffen", "Pistolen", "Fraktion LIKE '" ..mafia.."'"))
+	MafiaSDPistolen = tonumber(MySQL_GetString("fraktionswaffen", "SDPistolen", "Fraktion LIKE '" ..mafia.."'"))
+	MafiaPistolenMagazine = tonumber(MySQL_GetString("fraktionswaffen", "PistolenMagazine", "Fraktion LIKE '" ..mafia.."'"))
+	MafiaDesertEagles = tonumber(MySQL_GetString("fraktionswaffen", "DesertEagles", "Fraktion LIKE '" ..mafia.."'"))
+	MafiaDesertEagleMunition = tonumber(MySQL_GetString("fraktionswaffen", "DesertEagleMunition", "Fraktion LIKE '" ..mafia.."'"))
+	MafiaSchrotflinten = tonumber(MySQL_GetString("fraktionswaffen", "Schrotflinten", "Fraktion LIKE '" ..mafia.."'"))
+	MafiaSchrotflintenMunition = tonumber(MySQL_GetString("fraktionswaffen", "SchrotflintenMunition", "Fraktion LIKE '" ..mafia.."'"))
+	MafiaMP = tonumber(MySQL_GetString("fraktionswaffen", "MP", "Fraktion LIKE '" ..mafia.."'"))
+	MafiaMPMunition = tonumber(MySQL_GetString("fraktionswaffen", "MPMunition", "Fraktion LIKE '" ..mafia.."'"))
+	MafiaAK = tonumber(MySQL_GetString("fraktionswaffen", "AK", "Fraktion LIKE '" ..mafia.."'"))
+	MafiaAKMunition = tonumber(MySQL_GetString("fraktionswaffen", "AKMunition", "Fraktion LIKE '" ..mafia.."'"))
+	MafiaM = tonumber(MySQL_GetString("fraktionswaffen", "M", "Fraktion LIKE '" ..mafia.."'"))
+	MafiaMMunition = tonumber(MySQL_GetString("fraktionswaffen", "MMunition", "Fraktion LIKE '" ..mafia.."'"))
+	MafiaGewehre = tonumber(MySQL_GetString("fraktionswaffen", "Gewehre", "Fraktion LIKE '" ..mafia.."'"))
+	MafiaGewehrPatronen = tonumber(MySQL_GetString("fraktionswaffen", "GewehrPatronen", "Fraktion LIKE '" ..mafia.."'"))
+	MafiaSGewehr = tonumber(MySQL_GetString("fraktionswaffen", "SGewehr", "Fraktion LIKE '" ..mafia.."'"))
+	MafiaSGewehrMunition = tonumber(MySQL_GetString("fraktionswaffen", "SGewehrMunition", "Fraktion LIKE '" ..mafia.."'"))
+	MafiaRaketenwerfer = tonumber(MySQL_GetString("fraktionswaffen", "Raketenwerfer", "Fraktion LIKE '" ..mafia.."'"))
+	MafiaRaketen = tonumber(MySQL_GetString("fraktionswaffen", "Raketen", "Fraktion LIKE '" ..mafia.."'"))
+	MafiaSpezwaffen = tonumber(MySQL_GetString("fraktionswaffen", "Spezwaffen", "Fraktion LIKE '" ..mafia.."'"))
+end
+addEventHandler("onResourceStart", getResourceRootElement(getThisResource()), mafiasettings )

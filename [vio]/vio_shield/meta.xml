@@ -1,0 +1,9 @@
+<meta>
+
+	<info author="Zipper" type="anticheat" name="Vio Shield v. 2.0" description="Anticheat" />
+	
+	<script src="settings_client.lua" type="client" />
+	
+	<script src="shield_client.lua" type="client" />
+	<script src="shield_server.lua" type="server" />
+</meta>

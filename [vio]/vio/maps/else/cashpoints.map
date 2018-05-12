@@ -1,0 +1,9 @@
+﻿<map edf:definitions="editor_main">
+    <object id="object (kmb_atm1) (1)" doublesided="false" model="2942" interior="0" dimension="0" posX="2194.9931640625" posY="1986.845703125" posZ="11.939774513245" rotX="0" rotY="0" rotZ="270" />
+    <object id="object (kmb_atm1) (2)" doublesided="false" model="2942" interior="0" dimension="0" posX="58.872116088867" posY="1212.8475341797" posZ="18.490715026855" rotX="0" rotY="0" rotZ="90" />
+    <object id="object (kmb_atm1) (3)" doublesided="false" model="2942" interior="0" dimension="0" posX="-1318.1850585938" posY="2700.0229492188" posZ="49.9091796875" rotX="0" rotY="0" rotZ="30" />
+    <object id="object (kmb_atm1) (4)" doublesided="false" model="2942" interior="0" dimension="0" posX="-2234.3059082031" posY="2351.4655761719" posZ="4.6276264190674" rotX="0" rotY="0" rotZ="312.5" />
+    <object id="object (kmb_atm1) (5)" doublesided="false" model="2942" interior="0" dimension="0" posX="-2420.2102050781" posY="987.51696777344" posZ="44.93977355957" rotX="0" rotY="0" rotZ="90" />
+    <object id="object (kmb_atm1) (6)" doublesided="false" model="2942" interior="0" dimension="0" posX="-2231.9760742188" posY="-2559.2924804688" posZ="31.56477355957" rotX="0" rotY="0" rotZ="240" />
+    <object id="object (kmb_atm1) (7)" doublesided="false" model="2942" interior="0" dimension="0" posX="-2635.9108886719" posY="208.49067687988" posZ="3.9931170940399" rotX="0" rotY="0" rotZ="180" />
+</map>

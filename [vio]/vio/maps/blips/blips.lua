@@ -1,0 +1,2 @@
+﻿paynspraysfwangcars = createBlip ( -1904.4794921875, 289.47146606445, 41.046875, 63, 2, 255, 0, 0, 255, 0, 200, getRootElement() )
+carshopsfwangcars = createBlip ( -1962.837890625, 294.10858154297, 35.171875, 55, 2, 255, 0, 0, 255, 0, 999999, getRootElement() )
