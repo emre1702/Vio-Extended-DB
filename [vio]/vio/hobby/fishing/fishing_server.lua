@@ -70,36 +70,42 @@ fishPrices = {
 
 setWaveHeight ( 0 )
 
-function setFishingValues ( player )
+local function setFishingValues_DB ( qh, player ) 
+	local result = dbPoll( qh, 0 )
+	if result and result[1] then
+		local string = result[1]["fishing"]
+	
+		local pole = tonumber ( gettok ( string, 1, string.byte ( '|' ) ) )
+		local hooks = tonumber ( gettok ( string, 2, string.byte ( '|' ) ) )
+		local worms = tonumber ( gettok ( string, 3, string.byte ( '|' ) ) )
+		local fishA = gettok ( string, 4, string.byte ( '|' ) )
+		local fishB = gettok ( string, 5, string.byte ( '|' ) )
+		local fishC = gettok ( string, 6, string.byte ( '|' ) )
+		
+		local fishATyp = tonumber ( gettok ( fishA, 1, string.byte ( ';' ) ) )
+		local fishBTyp = tonumber ( gettok ( fishB, 1, string.byte ( ';' ) ) )
+		local fishCTyp = tonumber ( gettok ( fishC, 1, string.byte ( ';' ) ) )
+		
+		local fishAWeight = tonumber ( gettok ( fishA, 2, string.byte ( ';' ) ) )
+		local fishBWeight = tonumber ( gettok ( fishB, 2, string.byte ( ';' ) ) )
+		local fishCWeight = tonumber ( gettok ( fishC, 2, string.byte ( ';' ) ) )
+		
+		vioSetElementData ( player, "fishingPole", ( pole == 1 ) )
+		vioSetElementData ( player, "fishingHooks", hooks )
+		vioSetElementData ( player, "fishingWorms", worms )
+		
+		vioSetElementData ( player, "fishingFishATyp", fishATyp	)
+		vioSetElementData ( player, "fishingFishBTyp", fishBTyp )
+		vioSetElementData ( player, "fishingFishCTyp", fishCTyp )
+		
+		vioSetElementData ( player, "fishingFishAWeight", fishAWeight )
+		vioSetElementData ( player, "fishingFishBWeight", fishBWeight )
+		vioSetElementData ( player, "fishingFishCWeight", fishCWeight )
+	end
+end
 
-	local string = MySQL_GetString ( "inventar", "fishing", "Name LIKE '"..getPlayerName ( player ).."'" )
-	
-	local pole = tonumber ( gettok ( string, 1, string.byte ( '|' ) ) )
-	local hooks = tonumber ( gettok ( string, 2, string.byte ( '|' ) ) )
-	local worms = tonumber ( gettok ( string, 3, string.byte ( '|' ) ) )
-	local fishA = gettok ( string, 4, string.byte ( '|' ) )
-	local fishB = gettok ( string, 5, string.byte ( '|' ) )
-	local fishC = gettok ( string, 6, string.byte ( '|' ) )
-	
-	local fishATyp = tonumber ( gettok ( fishA, 1, string.byte ( ';' ) ) )
-	local fishBTyp = tonumber ( gettok ( fishB, 1, string.byte ( ';' ) ) )
-	local fishCTyp = tonumber ( gettok ( fishC, 1, string.byte ( ';' ) ) )
-	
-	local fishAWeight = tonumber ( gettok ( fishA, 2, string.byte ( ';' ) ) )
-	local fishBWeight = tonumber ( gettok ( fishB, 2, string.byte ( ';' ) ) )
-	local fishCWeight = tonumber ( gettok ( fishC, 2, string.byte ( ';' ) ) )
-	
-	vioSetElementData ( player, "fishingPole", ( pole == 1 ) )
-	vioSetElementData ( player, "fishingHooks", hooks )
-	vioSetElementData ( player, "fishingWorms", worms )
-	
-	vioSetElementData ( player, "fishingFishATyp", fishATyp	)
-	vioSetElementData ( player, "fishingFishBTyp", fishBTyp )
-	vioSetElementData ( player, "fishingFishCTyp", fishCTyp )
-	
-	vioSetElementData ( player, "fishingFishAWeight", fishAWeight )
-	vioSetElementData ( player, "fishingFishBWeight", fishBWeight )
-	vioSetElementData ( player, "fishingFishCWeight", fishCWeight )
+function setFishingValues ( player )
+	dbQuery( setFishingValues_DB, { player }, handler, "SELECT fishing FROM inventar WHERE Name LIKE ?", getPlayerName( player ) )
 end
 function saveFishingValues ( player )
 
@@ -116,7 +122,7 @@ function saveFishingValues ( player )
 	string = string..vioGetElementData ( player, "fishingFishBTyp" )..";"..vioGetElementData ( player, "fishingFishBWeight" ).."|"
 	string = string..vioGetElementData ( player, "fishingFishCTyp" )..";"..vioGetElementData ( player, "fishingFishCWeight" )
 	
-	MySQL_SetString ( "inventar", "fishing", string, "Name LIKE '"..pname.."'" )
+	MySQL_SetString ( "inventar", "fishing", string, dbPrepareString( handler, "Name LIKE ?", pname ) )
 end
 
 function fishCought_func ()

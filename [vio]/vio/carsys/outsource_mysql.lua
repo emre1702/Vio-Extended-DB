@@ -1,4 +1,4 @@
-﻿local result = mysql_query ( handler_old, "SHOW FIELDS FROM `vehicles`" )
+﻿--[[ local result = mysql_query ( handler_old, "SHOW FIELDS FROM `vehicles`" )
 local i = 0
 local vehicleMySQLColumns = ""
 local vehicleMySQLFields = {}
@@ -15,11 +15,11 @@ while mysql_num_rows ( result ) > 0 do
 		break
 	end
 end
-mysql_free_result ( result )
+mysql_free_result ( result ) ]]
 
 function moveVehiclesToOldDatabase ( name )
 
-	local result = mysql_query ( handler, "SELECT * FROM vehicles WHERE Besitzer LIKE '"..name.."'" )
+	--[[local result = mysql_query ( handler, "SELECT * FROM vehicles WHERE Besitzer LIKE '"..name.."'" )
 	local data = mysql_fetch_assoc ( result )
 	local runs = 0
 	while mysql_num_rows ( result ) > 0 do
@@ -44,7 +44,7 @@ function moveVehiclesToOldDatabase ( name )
 					mysql_free_result ( res )
 				end
 				
-				MySQL_DelRow ( "vehicles", "Besitzer LIKE '"..name.."' AND Slot LIKE '"..data["Slot"].."'" )
+				dbExec( handler, "REMOVE FROM vehicles WHERE Besitzer LIKE ? AND Slot LIKE ?", name, data["Slot"] )
 				
 				data = mysql_fetch_assoc ( result )
 			else
@@ -54,12 +54,12 @@ function moveVehiclesToOldDatabase ( name )
 			break
 		end
 	end
-	mysql_free_result ( result )
+	mysql_free_result ( result )]]
 end
 
 function moveVehiclesToNewDatabase ( name )
 
-	local result = mysql_query ( handler_old, "SELECT * FROM vehicles WHERE Besitzer LIKE '"..name.."'" )
+	--[[local result = mysql_query ( handler_old, "SELECT * FROM vehicles WHERE Besitzer LIKE '"..name.."'" )
 	local data = mysql_fetch_assoc ( result )
 	local runs = 0
 	while mysql_num_rows ( result ) > 0 do
@@ -99,5 +99,5 @@ function moveVehiclesToNewDatabase ( name )
 			break
 		end
 	end
-	mysql_free_result ( result )
+	mysql_free_result ( result )]]
 end

@@ -137,7 +137,7 @@ function showNextFarmerJobMarker ( player, farmJobCounter, i )
 		local ip = getPlayerIP ( player )
 		local serial = getPlayerSerial ( player )
 		local pname = getPlayerName ( player )
-		mysql_vio_query ( "INSERT INTO ban (Name, Admin, Grund, Datum, IP, Serial) VALUES ('"..pname.."', 'Anticheat', 'Teleport', '"..timestamp().."', '"..ip.."', '"..serial.."')")
+		dbExec( handler, "INSERT INTO ban (Name, Admin, Grund, Datum, IP, Serial) VALUES (?, 'Anticheat', 'Teleport', '"..timestamp().."', ?, ?)", pname, ip, serial )
 		kickPlayer ( player, "Von: "..pname..", Grund: Teleport (Gebannt!)" )
 	end
 end

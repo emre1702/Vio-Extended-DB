@@ -50,6 +50,7 @@ for i = 1, 5, 1 do
 
 end
 
+
 function payday ( player )
 
 	if math.floor ( vioGetElementData ( player, "playingtime" ) / 60 ) == ( vioGetElementData ( player, "playingtime" ) / 60 ) then
@@ -154,9 +155,7 @@ function payday ( player )
 			local ID = math.abs(vioGetElementData ( player, "housekey" ))
 			local haus = houses["pickup"][ID]
 			rent = vioGetElementData ( haus, "miete" )
-			local Kasse = MySQL_GetString("houses", "Kasse", "ID LIKE '"..ID.."'")
-			local Kasse = Kasse + rent
-			MySQL_SetString("houses", "Kasse", Kasse, "ID LIKE '"..ID.."'")
+			dbExec( handler, "UPDATE houses SET Kasse = Kasse + ? WHERE ID LIKE ?", rent, ID )
 		end
 		
 		player_payday["Miete"] = rent
@@ -165,7 +164,7 @@ function payday ( player )
 			player_payday["Zuschuesse"] = player_payday["Zuschuesse"] + 1000
 		end
 		
-		local amount = MySQL_ExistAmount ( "gangs", "BesitzerFraktion = '"..faction.."'" )
+		local amount = MySQL_ExistAmount ( "gangs", dbPrepareString( handler, "BesitzerFraktion = ?", faction ) )
 						
 		if vioGetElementData ( player, "stvo_punkte" ) >= 1 then
 			vioSetElementData ( player, "stvo_punkte", vioGetElementData ( player, "stvo_punkte" ) - 1 )
@@ -299,8 +298,7 @@ function playingtime ( player )
 			end
 			
 			payday ( player )
-			MySQL_SetString("userdata", "Bankgeld", MySQL_Save ( vioGetElementData ( player, "bankmoney") ), "Name LIKE '"..pname.."'")
-			MySQL_SetString("userdata", "Geld", MySQL_Save ( vioGetElementData ( player, "money" ) ), "Name LIKE '"..pname.."'")
+			dbExec( handler, "UPDATE userdata SET Bankgeld = ?, Geld = ? WHERE Name LIKE ?", vioGetElementData( player, "bankmoney" ), vioGetElementData( player, "money" ), pname )
 			ReallifeAchievCheck ( player )
 			
 			if getPlayerPing ( player ) >= 350 then
@@ -313,7 +311,7 @@ function playingtime ( player )
 				triggerClientEvent ( player, "showAchievmentBox", player, "Schlaflos in SA", 50, 10000 )													-- Achiev: Schlaflos in SA, 12 Stunden am St??zocken, 30 Punkte
 				vioSetElementData ( player, "bonuspoints", vioGetElementData ( player, "bonuspoints" ) + 50 )												-- Achiev: Schlaflos in SA, 12 Stunden am St??zocken, 30 Punkte
 				vioSetElementData ( player, "schlaflosinsa", "done" )																						-- Achiev: Schlaflos in SA, 12 Stunden am St??zocken, 30 Punkte
-				MySQL_SetString("achievments", "SchlaflosInSA", "done", "Name LIKE '"..getPlayerName(player).."'")											-- Achiev: Schlaflos in SA, 12 Stunden am St??zocken, 30 Punkte
+				MySQL_SetString("achievments", "SchlaflosInSA", "done", dbPrepareString( handler, "Name LIKE ?", getPlayerName(player) ) )											-- Achiev: Schlaflos in SA, 12 Stunden am St??zocken, 30 Punkte
 			end	
 				
 		end

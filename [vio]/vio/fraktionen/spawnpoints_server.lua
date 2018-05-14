@@ -330,12 +330,7 @@
 	else
 		outputChatBox ( "Ungueltige Eingabe! Bitte entweder \"house\", \"faction\", \"boat\", \"wohnmobil\" oder \"street\" eingeben!", player, 125, 0, 0 )
 	end
-	MySQL_SetString("userdata", "Spawnpos_X", vioGetElementData ( player, "spawnpos_x" ), "Name LIKE '"..pname.."'")
-	MySQL_SetString("userdata", "Spawnpos_Y", vioGetElementData ( player, "spawnpos_y" ), "Name LIKE '"..pname.."'")
-	MySQL_SetString("userdata", "Spawnpos_Z", vioGetElementData ( player, "spawnpos_z" ), "Name LIKE '"..pname.."'")
-	MySQL_SetString("userdata", "Spawnrot_X", vioGetElementData ( player, "spawnrot_x" ), "Name LIKE '"..pname.."'")
-	MySQL_SetString("userdata", "SpawnInterior", vioGetElementData ( player, "spawnint" ), "Name LIKE '"..pname.."'")
-	MySQL_SetString("userdata", "SpawnDimension", vioGetElementData ( player, "spawndim" ), "Name LIKE '"..pname.."'")
+	dbExec( handler, "UPDATE userdata SET Spawnpos_X=?, Spawnpos_Y=?, Spawnpos_Z=?, Spawnrot_X=?, SpawnInterior=?, SpawnDimension = ? WHERE Name LIKE ?", vioGetElementData ( player, "spawnpos_x" ), vioGetElementData ( player, "spawnpos_y" ), vioGetElementData ( player, "spawnpos_z" ), vioGetElementData ( player, "spawnrot_x" ), vioGetElementData ( player, "spawnint" ), vioGetElementData ( player, "spawndim" ), pname )
 end
 addCommandHandler ( "spawnchange", 
 	function ( player )

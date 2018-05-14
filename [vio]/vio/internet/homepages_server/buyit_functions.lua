@@ -29,9 +29,8 @@ function buyItMoneyChange ( pname, amount )
 	if isElement ( player ) then
 		local money = vioGetElementData ( player, "bankmoney" )
 		vioSetElementData ( player, "bankmoney", money + amount )
-	elseif MySQL_DatasetExist ( "players", "Name LIKE '"..pname.."' " ) then
-		local money = MySQL_GetString("userdata", "Bankgeld", "Name LIKE '" ..pname.."'")
-		MySQL_SetString("userdata", "Bankgeld", money + amount, "Name LIKE '" ..pname.."'")
+	else
+		dbExec( handler, "UPDATE userdata SET Bankgeld = Bankgeld + ? WHERE Name LIKE ?", amount, pname )
 	end
 end
 
@@ -78,10 +77,8 @@ function buyItSendMail ( to, text )
 	local y = time.year + 1900
 	local yd = time.yearday
 	
-	local result = mysql_query(handler, "INSERT INTO email (Empfaenger, Text, Yearday, Year) VALUES ('"..to.."', '"..mail.."', '"..yd.."', '"..y.."')")
+	local result = dbExec( handler, "INSERT INTO email (Empfaenger, Text, Yearday, Year) VALUES (?, ?, '"..yd.."', '"..y.."')", to, mail )
 	if( not result) then
-		outputDebugString("Error executing the query: (" .. mysql_errno(handler) .. ") " .. mysql_error(handler))
-	else
-		mysql_free_result(result)
+		outputDebugString("Error executing the query buyItSendMail" )
 	end
 end

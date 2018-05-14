@@ -20,52 +20,48 @@ for key, index in pairs ( carSellerSkin ) do
 end
 
 function loadBotCarTypes ()
+	local result = dbPoll( dbQuery ( handler, "SELECT Model, Preis, Name FROM cars_ai" ), -1 )
+	if result and result[1] then
+		for i=1, #result do
+			carTypesForAI[i] = {}
+		
+			local model = result[i]["Model"]
+			local price = result[i]["Preis"]
+			local name = result[i]["Name"]
+			
+			carTypesForAI[i]["model"] = model
+			carTypesForAI[i]["price"] = price
+			carTypesForAI[i]["name"] = name
+			
+			aiCarPrices[model] = price
+					
+			table.insert ( carprices, model, price )	
+		end
+	end
 
-	local i = 1
-	
-	while MySQL_DatasetExist ( "cars_ai", "ID LIKE '"..i.."'" ) do
-		carTypesForAI[i] = {}
+	result = dbPoll( dbQuery ( handler, "SELECT * FROM cars_peds_ai" ), -1 )
+	if result and result[1] then
+		for i=1, #result do
+			carPedsForAI[i] = {}
 		
-		local model = tonumber ( MySQL_GetString ( "cars_ai", "Model", "ID LIKE '"..i.."'" ) )
-		local price = MySQL_GetString ( "cars_ai", "Preis", "ID LIKE '"..i.."'" )
-		local name = MySQL_GetString ( "cars_ai", "Name", "ID LIKE '"..i.."'" )
-		
-		carTypesForAI[i]["model"] = model
-		carTypesForAI[i]["price"] = price
-		carTypesForAI[i]["name"] = name
-		
-		aiCarPrices[model] = price
-				
-		table.insert ( carprices, model, price )
-		
-		i = i + 1
-	end
-	aiCarTypes = i - 1
-	i = 1
-	while MySQL_DatasetExist ( "cars_peds_ai", "ID LIKE '"..i.."'" ) do
-		carPedsForAI[i] = {}
-		
-		carPedsForAI[i]["vx"] = MySQL_GetString ( "cars_peds_ai", "VehX", "ID LIKE '"..i.."'" )
-		carPedsForAI[i]["vy"] = MySQL_GetString ( "cars_peds_ai", "VehY", "ID LIKE '"..i.."'" )
-		carPedsForAI[i]["vz"] = MySQL_GetString ( "cars_peds_ai", "VehZ", "ID LIKE '"..i.."'" )
-		carPedsForAI[i]["vrx"] = MySQL_GetString ( "cars_peds_ai", "VehRX", "ID LIKE '"..i.."'" )
-		carPedsForAI[i]["vry"] = MySQL_GetString ( "cars_peds_ai", "VehRY", "ID LIKE '"..i.."'" )
-		carPedsForAI[i]["vrz"] = MySQL_GetString ( "cars_peds_ai", "VehRZ", "ID LIKE '"..i.."'" )
-		
-		carPedsForAI[i]["pedx"] = MySQL_GetString ( "cars_peds_ai", "PedX", "ID LIKE '"..i.."'" )
-		carPedsForAI[i]["pedy"] = MySQL_GetString ( "cars_peds_ai", "PedY", "ID LIKE '"..i.."'" )
-		carPedsForAI[i]["pedz"] = MySQL_GetString ( "cars_peds_ai", "PedZ", "ID LIKE '"..i.."'" )
-		carPedsForAI[i]["pedr"] = MySQL_GetString ( "cars_peds_ai", "PedR", "ID LIKE '"..i.."'" )
-		
-		i = i + 1
-	end
-	carspots = i - 1
-	for i = 1, carspots do
-		curAiCarSpots[i] = {}
-		curAiCarSpots[i]["bool"] = false
+			carPedsForAI[i]["vx"] = result[i]["VehX"]
+			carPedsForAI[i]["vy"] = result[i]["VehY"]
+			carPedsForAI[i]["vz"] = result[i]["VehZ"]
+			carPedsForAI[i]["vrx"] = result[i]["VehRX"]
+			carPedsForAI[i]["vry"] = result[i]["VehRY"]
+			carPedsForAI[i]["vrz"] = result[i]["VehRZ"]
+			
+			carPedsForAI[i]["pedx"] = result[i]["PedX"]
+			carPedsForAI[i]["pedy"] = result[i]["PedY"]
+			carPedsForAI[i]["pedz"] = result[i]["PedZ"]
+			carPedsForAI[i]["pedr"] = result[i]["PedR"]
+
+			curAiCarSpots[i] = {}
+			curAiCarSpots[i]["bool"] = false
+		end
 	end
 end
-loadBotCarTypes ()
+
 
 function createNewCarAI ()
 

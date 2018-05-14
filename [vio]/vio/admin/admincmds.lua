@@ -109,49 +109,44 @@ function help_func ( player )
 	
 end
 
-function nickchange_func ( player, cmd, alterName, neuerName )
 
-	local alterName = MySQL_Save ( alterName )
-	local neuerName = MySQL_Save ( neuerName )
+local function nickchange_func_DB ( qh, alterName, neuerName )
+	local result = dbPoll( qh, 0 )
+	if result and result[1] then
+		if result[1]["Name"] == alterName then
+			outputChatBox ( "Der Spieler existiert nicht!", player, 125, 0, 0 )
+			return
+		elseif result[1]["Name"] == neuerName then
+			outputChatBox ( "Der neue Name ist bereits vergeben!", player, 125, 0, 0 )
+			return
+		end
+	end
+	-- Data --
+	dbExec( handler, "UPDATE achievments SET Name = ? WHERE Name LIKE ?", neuerName, alterName )
+	dbExec( handler, "UPDATE biz SET Inhaber = ? WHERE Inhaber LIKE ?", neuerName, alterName )
+	dbExec( handler, "UPDATE bonustable SET Name = ? WHERE Name LIKE ?", neuerName, alterName )
+	dbExec( handler, "UPDATE houses SET Besitzer = ? WHERE Besitzer LIKE ?", neuerName, alterName )
+	dbExec( handler, "UPDATE inventar SET Name = ? WHERE Name LIKE ?", neuerName, alterName )
+	dbExec( handler, "UPDATE logout SET Name = ? WHERE Name LIKE ?", neuerName, alterName )
+	dbExec( handler, "UPDATE packages SET Name = ? WHERE Name LIKE ?", neuerName, alterName )
+	dbExec( handler, "UPDATE players SET Name = ? WHERE Name LIKE ?", neuerName, alterName )
+	dbExec( handler, "UPDATE prestige SET Besitzer = ? WHERE Besitzer LIKE ?", neuerName, alterName )
+	dbExec( handler, "UPDATE userdata SET Name = ? WHERE Name LIKE ?", neuerName, alterName )
+	dbExec( handler, "UPDATE vehicles SET Besitzer = ? WHERE Besitzer LIKE ?", neuerName, alterName )
+	dbExec( handler, "UPDATE skills SET Name = ? WHERE Name LIKE ?", neuerName, alterName )
+	
+	outputAdminLog ( getPlayerName ( player ).." hat "..alterName.." in "..neuerName.." umbenannt." )
+	
+	outputChatBox ( "Du hast den Spieler "..alterName.." in "..neuerName.." umbenannt!", player, 0, 125, 0 )
+
+end
+
+function nickchange_func ( player, cmd, alterName, neuerName )
 	
 	if isAdminLevel ( player, 2 ) then
 	
 		if not findPlayerByName ( alterName ) then
-		
-			if MySQL_DatasetExist ( "players", "Name LIKE '"..alterName.."'") then
-			
-				if not MySQL_DatasetExist ( "players", "Name LIKE '"..neuerName.."'") and not MySQL_DatasetOldExist ( "players", "Name LIKE '"..neuerName.."'") then
-				
-					-- Data --
-					MySQL_SetString ( "achievments", "Name", neuerName, "Name LIKE '"..alterName.."'")
-					MySQL_SetString ( "biz", "Inhaber", neuerName, "Inhaber LIKE '"..alterName.."'")
-					MySQL_SetString ( "bonustable", "Name", neuerName, "Name LIKE '"..alterName.."'")
-					MySQL_SetString ( "houses", "Besitzer", neuerName, "Besitzer LIKE '"..alterName.."'")
-					MySQL_SetString ( "inventar", "Name", neuerName, "Name LIKE '"..alterName.."'")
-					MySQL_SetString ( "logout", "Name", neuerName, "Name LIKE '"..alterName.."'")
-					MySQL_SetString ( "packages", "Name", neuerName, "Name LIKE '"..alterName.."'")
-					MySQL_SetString ( "players", "Name", neuerName, "Name LIKE '"..alterName.."'")
-					MySQL_SetString ( "prestige", "Besitzer", neuerName, "Besitzer LIKE '"..alterName.."'")
-					MySQL_SetString ( "userdata", "Name", neuerName, "Name LIKE '"..alterName.."'")
-					MySQL_SetString ( "vehicles", "Besitzer", neuerName, "Besitzer LIKE '"..alterName.."'")
-					MySQL_SetString ( "skills", "Name", neuerName, "Name LIKE '"..alterName.."'")
-					
-					outputAdminLog ( getPlayerName ( player ).." hat "..alterName.." in "..neuerName.." umbenannt." )
-					
-					outputChatBox ( "Du hast den Spieler "..alterName.." in "..neuerName.." umbenannt!", player, 0, 125, 0 )
-					
-				else
-				
-					outputChatBox ( "Der neue Name ist bereits vergeben!", player, 125, 0, 0 )
-					
-				end
-				
-			else
-			
-				outputChatBox ( "Der Spieler existiert nicht!", player, 125, 0, 0 )
-				
-			end
-			
+			dbQuery( nickchange_func_DB, { alterName, neuerName }, handler, "SELECT Name FROM players WHERE Name LIKE ? OR Name LIKE ?", alterName, neuerName )			
 		else
 		
 			outputChatBox ( "Der Spieler ist noch eingeloggt!", player, 125, 0, 0 )
@@ -227,11 +222,8 @@ function pwchange_func ( player, cmd, target, newPW )
 	
 		if newPW and target then
 		
-			local target = MySQL_Save ( target )
-			local newPW = MySQL_Save ( newPW )
 			local empty = ""
-			MySQL_SetString ( "players", "Passwort", md5(newPW), "Name LIKE '" ..target.."'" )
-			MySQL_SetString ( "players", "Salt", empty, "Name LIKE '" ..target.."'" )
+			dbExec( handler, "UPDATE players SET Passwort = ?, Salt = ? WHERE Name LIKE ?", md5(newPW), empty, target )
 			outputChatBox ( "Passwort geaendert!", player, 0, 125, 0 )
 			
 			outputAdminLog ( getPlayerName ( player ).." hat das Passwort von "..target.." geaendert!" )
@@ -250,7 +242,7 @@ function pwchange_func ( player, cmd, target, newPW )
 	
 end
 
-function query_func ( player, cmd, ... )
+--[[function query_func ( player, cmd, ... )
 
 	local parametersTable = {...}
 	local query = table.concat( parametersTable, " " )
@@ -262,7 +254,7 @@ function query_func ( player, cmd, ... )
 		
 	end
 	
-end
+end]]
 
 function shut_func ( player, cmd, test )
 
@@ -1128,7 +1120,7 @@ function makeleader_func ( player, cmd, target, fraktion )
 						vioSetElementData ( target, "rang", 0 )
 						outputChatBox ( "Du wurdest soeben zum Zivilisten gemacht.", target, 0, 125, 0 )
 						outputAdminLog ( getPlayerName ( player ).." hat "..getPlayerName ( target ).." zum Zivilisten gemacht." )
-						MySQL_SetString ( "userdata", "LastFactionChange", timestampOptical (), "Name LIKE '"..getPlayerName ( target ).."'")
+						dbExec( handler, "UPDATE userdata SET LastFactionChange = ? WHERE Name LIKE ?", timestampOptical (), getPlayerName( target ) )
 						
 					end
 					
@@ -1137,7 +1129,7 @@ function makeleader_func ( player, cmd, target, fraktion )
 						vioSetElementData ( target, "rang", 5 )
 						outputChatBox ( "Du wurdest soeben zum Polizeichief ernannt! Fuer mehr Infos oeffne das Hilfemenue!", target, 0, 125, 0 )
 						outputAdminLog ( getPlayerName ( player ).." hat "..getPlayerName ( target ).." zum Polizeichief ernannt!" )
-						MySQL_SetString ( "userdata", "LastFactionChange", timestampOptical (), "Name LIKE '"..getPlayerName ( target ).."'")
+						dbExec( handler, "UPDATE userdata SET LastFactionChange = ? WHERE Name LIKE ?", timestampOptical (), getPlayerName( target ) )
 						
 					end
 					
@@ -1146,7 +1138,7 @@ function makeleader_func ( player, cmd, target, fraktion )
 						vioSetElementData ( target, "rang", 5 )
 						outputChatBox ( "Du bist nun Don der Mafia - Fuer mehr Infos oeffne das Hilfemenue!", target, 0, 125, 0 )
 						outputAdminLog ( getPlayerName ( player ).." hat "..getPlayerName ( target ).." zum Don ernannt!" )
-						MySQL_SetString ( "userdata", "LastFactionChange", timestampOptical (), "Name LIKE '"..getPlayerName ( target ).."'")
+						dbExec( handler, "UPDATE userdata SET LastFactionChange = ? WHERE Name LIKE ?", timestampOptical (), getPlayerName( target ) )
 						
 					end
 					
@@ -1155,7 +1147,7 @@ function makeleader_func ( player, cmd, target, fraktion )
 						vioSetElementData ( target, "rang", 5 )
 						outputChatBox ( "Du bist nun das Oberhaupt der Triaden - Fuer mehr Infos oeffne das Hilfemenue!", target, 0, 125, 0 )
 						outputAdminLog ( getPlayerName ( player ).." hat "..getPlayerName ( target ).." zum Triadenboss ernannt!" )
-						MySQL_SetString ( "userdata", "LastFactionChange", timestampOptical (), "Name LIKE '"..getPlayerName ( target ).."'")
+						dbExec( handler, "UPDATE userdata SET LastFactionChange = ? WHERE Name LIKE ?", timestampOptical (), getPlayerName( target ) )
 						
 					end
 					
@@ -1164,7 +1156,7 @@ function makeleader_func ( player, cmd, target, fraktion )
 						vioSetElementData ( target, "rang", 5 )
 						outputChatBox ( "Du bist nun der Fuehrer der Terroristen - Fuer mehr Infos oeffne das Hilfemenue!", target, 0, 125, 0 )
 						outputAdminLog ( getPlayerName ( player ).." hat "..getPlayerName ( target ).." zum Revolutionsführer ernannt!" )
-						MySQL_SetString ( "userdata", "LastFactionChange", timestampOptical (), "Name LIKE '"..getPlayerName ( target ).."'")
+						dbExec( handler, "UPDATE userdata SET LastFactionChange = ? WHERE Name LIKE ?", timestampOptical (), getPlayerName( target ) )
 						
 					end
 					
@@ -1173,7 +1165,7 @@ function makeleader_func ( player, cmd, target, fraktion )
 						vioSetElementData ( target, "rang", 5 )
 						outputChatBox ( "Du bist nun der Chefredakteur der LTR - Fuer mehr Infos oeffne das Hilfemenue!", target, 0, 125, 0 )
 						outputAdminLog ( getPlayerName ( player ).." hat "..getPlayerName ( target ).." zum Chefredakteur ernannt!" )
-						MySQL_SetString ( "userdata", "LastFactionChange", timestampOptical (), "Name LIKE '"..getPlayerName ( target ).."'")
+						dbExec( handler, "UPDATE userdata SET LastFactionChange = ? WHERE Name LIKE ?", timestampOptical (), getPlayerName( target ) )
 						
 					end
 					
@@ -1182,7 +1174,7 @@ function makeleader_func ( player, cmd, target, fraktion )
 						vioSetElementData ( target, "rang", 5 )
 						outputChatBox ( "Du bist nun der Direktor des Federal Bureau of Investigation - Fuer mehr Infos oeffne das Hilfemenue!", target, 0, 125, 0 )
 						outputAdminLog ( getPlayerName ( player ).." hat "..getPlayerName ( target ).." zum FBI-Direktor ernannt!" )
-						MySQL_SetString ( "userdata", "LastFactionChange", timestampOptical (), "Name LIKE '"..getPlayerName ( target ).."'")
+						dbExec( handler, "UPDATE userdata SET LastFactionChange = ? WHERE Name LIKE ?", timestampOptical (), getPlayerName( target ) )
 						
 					end
 					
@@ -1191,7 +1183,7 @@ function makeleader_func ( player, cmd, target, fraktion )
 						vioSetElementData ( target, "rang", 5 )
 						outputChatBox ( "Du bist nun der Boss der Los Aztecas - Fuer mehr Infos oeffne das Hilfemenue!", target, 0, 125, 0 )
 						outputAdminLog ( getPlayerName ( player ).." hat "..getPlayerName ( target ).." zum Jefa ernannt!" )
-						MySQL_SetString ( "userdata", "LastFactionChange", timestampOptical (), "Name LIKE '"..getPlayerName ( target ).."'")
+						dbExec( handler, "UPDATE userdata SET LastFactionChange = ? WHERE Name LIKE ?", timestampOptical (), getPlayerName( target ) )
 						
 					end
 					
@@ -1200,7 +1192,7 @@ function makeleader_func ( player, cmd, target, fraktion )
 						vioSetElementData ( target, "rang", 5 )
 						outputChatBox ( "Du bist nun der Commander der Army - Fuer mehr Infos oeffne das Hilfemenue!", target, 0, 125, 0 )
 						outputAdminLog ( getPlayerName ( player ).." hat "..getPlayerName ( target ).." zum Commander ernannt!" )
-						MySQL_SetString ( "userdata", "LastFactionChange", timestampOptical (), "Name LIKE '"..getPlayerName ( target ).."'")
+						dbExec( handler, "UPDATE userdata SET LastFactionChange = ? WHERE Name LIKE ?", timestampOptical (), getPlayerName( target ) )
 						
 					end
 					
@@ -1323,6 +1315,19 @@ function rkick_func ( player, command, kplayer, ... )
 	
 end
 
+
+-- hole Serial aus DB und ban offline 
+local function rban_func_DB ( qh, player, kplayer, reason ) 
+	local result = dbPoll( qh, 0 )
+	if result and result[1] then
+		local serial = result[1]["Serial"]	
+		outputChatBox ( "Der Spieler wurde (offline) gebannt!", player, 125, 0, 0 )
+		dbExec( handler, "INSERT INTO ban (Name, Admin, Grund, Datum, IP, Serial) VALUES (?, ?, ?, ?, '0.0.0.0', ?)", kplayer, getPlayerName( player ), reason, timestamp(), serial )
+	else 
+		outputChatBox ( "Der Spieler existiert nicht!", player, 125, 0, 0 )
+	end
+end
+
 function rban_func ( player, command, kplayer, ... )
 		
 	if getElementType(player) == "console" then
@@ -1336,22 +1341,9 @@ function rban_func ( player, command, kplayer, ... )
 		local reason = {...}
 		reason = table.concat( reason, " " )
 		local target = findPlayerByName ( kplayer )
-		kplayer = MySQL_Save ( kplayer )
 		
 		if not target then
-		
-			if MySQL_DatasetExist("players", "Name LIKE '"..kplayer.."'") then
-			
-				local serial = MySQL_GetString( "players", "Serial", "Name LIKE '"..kplayer.."'" )
-				outputChatBox ( "Der Spieler wurde (offline) gebannt!", player, 125, 0, 0 )
-				mysql_vio_query("INSERT INTO ban (Name, Admin, Grund, Datum, IP, Serial) VALUES ('"..kplayer.."', '"..getPlayerName(player).."', '"..reason.."', '"..timestamp().."', '0.0.0.0', '"..serial.."')")
-				
-			else
-			
-				outputChatBox ( "Der Spieler existiert nicht!", player, 125, 0, 0 )
-				
-			end
-			
+			dbQuery( rban_func_DB, { player, kplayer, reason, serial }, handler, "SELECT Serial FROM players WHERE Name LIKE ?", kplayer )
 		else
 		
 			if getAdminLevel ( player ) < getAdminLevel ( target ) then
@@ -1364,7 +1356,7 @@ function rban_func ( player, command, kplayer, ... )
 			local ip = getPlayerIP ( findPlayerByName(kplayer) )
 			local serial = getPlayerSerial ( findPlayerByName(kplayer) )
 			
-			mysql_vio_query("INSERT INTO ban (Name, Admin, Grund, Datum, IP, Serial) VALUES ('"..kplayer.."', '"..getPlayerName(player).."', '"..reason.."', '"..timestamp().."', '"..ip.."', '"..serial.."')")
+			dbExec( handler, "INSERT INTO ban (Name, Admin, Grund, Datum, IP, Serial) VALUES (?, ?, ?, ?, ?, ?)", kplayer, getPlayerName( player ), reason, timestamp(), ip, serial )
 			kickPlayer ( target, player, tostring(reason).." (gebannt!)" )
 			
 		end
@@ -1406,7 +1398,7 @@ function ipban ( player, cmd, ip )
 
 	if isAdminLevel ( player, 2 ) then
 	
-		mysql_vio_query ( "INSERT INTO ban ( Name, Admin, Grund, Datum, IP, Serial ) VALUES ('IP-Ban', '"..getPlayerName ( player ).."', 'Unbekannt', '"..timestamp().."', '"..ip.."', '')" )
+		dbExec ( handler, "INSERT INTO ban ( Name, Admin, Grund, Datum, IP, Serial ) VALUES ('IP-Ban', ?, 'Unbekannt', '"..timestamp().."', ?, '')", getPlayerName( player ), ip )
 		outputChatBox ( "IP gesperrt.", player, 125, 0, 0 )
 		
 	end
@@ -1442,7 +1434,7 @@ function tban_func(player,command,kplayer,btime,...)
 		end
 		
 		local name = getPlayerName( target )
-		local savename = MySQL_Save ( name )
+		local savename = name
 		
 		local success = timebanPlayer ( savename, tonumber(btime), getPlayerName( player ), reason )
 		
@@ -1705,31 +1697,25 @@ function mute_func(player,command,tplayer)
 	
 end
 
-function unban_func ( player, cmd, nick )
+local function unban_func_DB ( qh, player, nick ) 
+	local result = dbPoll( qh, 0 )
+	if result and result[1] then
+		local name = result[1]["Name"]
+		dbExec( handler, "DELETE FROM ban WHERE Name LIKE ?", name )
+		outputChatBox ( getPlayerName(player).." hat "..name.." entbannt!", getRootElement(), 125, 0, 0 )
+		outputAdminLog ( getPlayerName(player).." hat "..name.." entbannt." )
+	else
+		outputChatBox ( "Der Spieler existiert nicht!", player, 125, 0, 0 )
+	end
+end
 
+function unban_func ( player, cmd, nick )
 	if getElementType ( player ) == "console" then
-	
-		vioSetElementData ( player, "adminlvl", 999 )
-		
+		vioSetElementData ( player, "adminlvl", 999 )	
 	end
 	
 	if isAdminLevel ( player, 2 ) then
-	
-		nick = MySQL_Save ( nick )
-		local name = MySQL_GetString("ban", "Name", "Name LIKE '"..nick.."'")
-		
-		if name then
-		
-			MySQL_DelRow ( "ban", "Name LIKE '"..name.."'")
-			outputChatBox ( getPlayerName(player).." hat "..nick.." entbannt!", getRootElement(), 125, 0, 0 )
-			outputAdminLog ( getPlayerName(player).." hat "..nick.." entbannt." )
-			
-		else
-		
-			outputChatBox ( "Der Spieler existiert nicht!", player, 125, 0, 0 )
-			
-		end
-		
+		dbQuery( unban_func_DB, { player, nick }, handler, "SELECT Name FROM ban WHERE Name LIKE ?", nick )
 	end
 	
 end
@@ -1807,7 +1793,7 @@ function gotocar_func ( player, cmd, targetname, slot )
 		if targetname and slot then
 			slot = tonumber(slot)
 			local target = findPlayerByName ( targetname )
-			local newtargetname = MySQL_Save ( getPlayerName ( target ) )
+			local newtargetname = getPlayerName ( target )
 			
 			if isElement(target) then
 			
@@ -1884,7 +1870,7 @@ function getcar_func ( player, cmd, targetname, slot )
 		if targetname and slot then
 			slot = tonumber(slot)
 			local target = findPlayerByName ( targetname )
-			local newtargetname = MySQL_Save ( getPlayerName ( target ) )
+			local newtargetname = getPlayerName ( target )
 			
 			if isElement(target) then
 			
@@ -2062,7 +2048,7 @@ addCommandHandler ( "hilfe", help_func )
 addCommandHandler ( "nickchange", nickchange_func )
 addCommandHandler ( "move", move_func )
 addCommandHandler ( "pwchange", pwchange_func )
-addCommandHandler ( "query", query_func )
+--addCommandHandler ( "query", query_func )
 addCommandHandler ( "shut", shut_func )
 addCommandHandler ( "rebind", rebind_func )
 addCommandHandler ( "admins", adminlist )

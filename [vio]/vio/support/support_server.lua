@@ -2,15 +2,11 @@
 local fastHelpTickets = {}
 fastHelpTicketSenders = {}
 
-function orderSupportTicket ( kathegory, text )
 
-	local player = client
-	local pname = getPlayerName ( player )
-	kathegory = math.abs ( math.floor ( tonumber ( kathegory ) ) )
-	-- Zeitbeschrünkung ( 3 Mins )
-	if not recentSupportRequests[pname] then
-		-- Anzahl-Beschrünkung ( Immer nur ein offenes Ticket erlaubt )
-		if not fastHelpTicketSenders[pname] and not MySQL_DatasetExist ( "tickets", "name LIKE '"..pname.."'" ) and not MySQL_DatasetExist ( "ticket_answeres", "name LIKE '"..pname.."'" ) then
+local function orderSupportTicket_DB ( qh, kathegory, text, player, pname )
+	local result = dbPoll( qh, 0, true )
+	if result then
+		if not fastHelpTicketSenders[pname] and not ( result[1] and result[1][1] ) and not ( result[2] and result[2][1] ) then
 			local someoneRecievedTheMessage = false
 			
 			outputLog ( "------------------\nNeues Ticket von "..pname..":\n"..text, "support_questions" )
@@ -55,7 +51,7 @@ function orderSupportTicket ( kathegory, text )
 				local ticket = { ["name"] = pname, ["text"] = text }
 				table.insert ( fastHelpTickets, ticket )
 			else
-				mysql_vio_query ( "INSERT INTO tickets ( name, kathegory, text ) VALUES ( '"..pname.."', '"..kathegory.."', '"..MySQL_Safe ( text ).."' )" )
+				dbExec ( handler, "INSERT INTO tickets ( name, kathegory, text ) VALUES ( ?, ?, ? )", pname, kathegory, text )
 			end
 			recentSupportRequests[pname] = true
 			setTimer (
@@ -64,12 +60,24 @@ function orderSupportTicket ( kathegory, text )
 				end,
 			3 * 60 * 1000, 1, pname )
 		else
-			if MySQL_DatasetExist ( "ticket_answeres", "name LIKE '"..pname.."'" ) then
+			if result[2] and result[2][1] then
 				outputChatBox ( "Du hast noch eine ausstehende Antwort! Tippe /readticket, um sie zu lesen!", player, 200, 0, 0 )
 			else
 				outputChatBox ( "Es existiert bereits eine Anfrage von dir!", player, 200, 0, 0 )
 			end
 		end
+	end
+end
+
+function orderSupportTicket ( kathegory, text )
+
+	local player = client
+	local pname = getPlayerName ( player )
+	kathegory = math.abs ( math.floor ( tonumber ( kathegory ) ) )
+	-- Zeitbeschrünkung ( 3 Mins )
+	if not recentSupportRequests[pname] then
+		-- Anzahl-Beschrünkung ( Immer nur ein offenes Ticket erlaubt )
+		dbQuery( orderSupportTicket_DB, { kathegory, text, player, pname }, handler, "SELECT true FROM tickets WHERE name LIKE ?; SELECT true FROM ticket_answeres WHERE name LIKE ?", pname, pname )
 	else
 		outputChatBox ( "Du hast vor kurzem bereits eine Anfrage gestellt!", player, 200, 0, 0 )
 	end
@@ -77,19 +85,39 @@ end
 addEvent ( "orderSupportTicket", true )
 addEventHandler ( "orderSupportTicket", getRootElement (), orderSupportTicket )
 
-function readticket_func ( player )
 
-	local pname = getPlayerName ( player )
-	local text = MySQL_GetString ( "ticket_answeres", "text", "name LIKE '"..pname.."'" )
-	if text then
-		local admin = MySQL_GetString ( "ticket_answeres", "admin", "name LIKE '"..pname.."'" )
+local function readticket_func_DB ( qh, player, pname ) 
+	local result = dbPoll( qh, 0 )
+	if result and result[1] then
+		local text = result[1]["text"]
+		local admin = result[1]["admin"]
 		triggerClientEvent ( player, "readTicketAnswere", player, text, admin )
-		mysql_vio_query ( "DELETE FROM ticket_answeres WHERE name LIKE '"..pname.."'" )
-	else
+		dbExec( handler, "DELETE FROM ticket_answeres WHERE name LIKE ?", pname )
+	else 
 		outputChatBox ( "Du hast keine Antwort auf ein Ticket!", player, 200, 0, 0 )
 	end
 end
+
+function readticket_func ( player )
+	local pname = getPlayerName ( player )
+	dbQuery( readticket_func_DB, { player, pname }, handler, "SELECT * FROM ticket_answeres WHERE name LIKE ?", pname )
+end
 addCommandHandler ( "readticket", readticket_func )
+
+
+local function retrieveTicketList_DB ( qh )
+	local result = dbPoll( qh, 0 )
+	if result and result[1] then
+		local tickets = {}
+		for i = 1, #result do
+			local data = result[i]
+			tickets[data["name"]] = data["name"]
+		end
+		triggerClientEvent ( player, "recieveTicketList", player, 2, tickets )
+	else
+		triggerClientEvent ( player, "thereAreNoTickets", player )
+	end
+end
 
 function retrieveTicketList ( typ )
 
@@ -103,39 +131,31 @@ function retrieveTicketList ( typ )
 		end
 	-- Anfragen & Fragen
 	elseif ( typ == 2 and ticketPermitted[player] ) or ( vioGetElementData ( player, "adminlvl" ) >= 1 and typ == 3 ) then
-		local tickets = {}
-		local result = mysql_query ( handler, "SELECT name FROM tickets WHERE kathegory = '"..typ.."' ORDER BY date ASC LIMIT 10" )
-		local rows = mysql_num_rows ( result )
-		if rows > 0 then
-			local data
-			for i = 1, rows do
-				data = mysql_fetch_assoc ( result )
-				tickets[data["name"]] = data["name"]
-			end
-			triggerClientEvent ( player, "recieveTicketList", player, 2, tickets )
-		else
-			triggerClientEvent ( player, "thereAreNoTickets", player )
-		end
-		mysql_free_result ( result )
+		dbQuery ( retrieveTicketList_DB, { player }, handler, "SELECT name FROM tickets WHERE kathegory = ? ORDER BY date ASC LIMIT 10", typ )
 	end
 end
 addEvent ( "retrieveTicketList", true )
 addEventHandler ( "retrieveTicketList", getRootElement(), retrieveTicketList )
 
-function recieveTicketDetails ( name )
 
-	local player = client
-	if vioGetElementData ( player, "adminlvl" ) >= 1 or ticketPermitted[player] then
-		local text = MySQL_GetString ( "tickets", "text", "name LIKE '"..MySQL_Safe ( name ).."'" )
-		if not text then
-			for key, index in pairs ( fastHelpTickets ) do
-				if index["name"] == name then
-					text = index["text"]
-					break
-				end
+local function recieveTicketDetails_DB ( qh, player, name )
+	local result = dbPoll( qh, 0 )
+	local text = result and result[1] and result[1]["name"] or ""
+	if not result or not result[1]  then
+		for key, index in pairs ( fastHelpTickets ) do
+			if index["name"] == name then
+				text = index["text"]
+				break
 			end
 		end
-		triggerClientEvent ( player, "recieveTicketDetails", player, text )
+	end
+	triggerClientEvent ( player, "recieveTicketDetails", player, text )
+end
+
+function recieveTicketDetails ( name )
+	local player = client
+	if vioGetElementData ( player, "adminlvl" ) >= 1 or ticketPermitted[player] then
+		dbQuery( recieveTicketDetails_DB, { player, name }, handler, "SELECT text FROM tickets WHERE name LIKE ?", name )
 	end
 end
 addEvent ( "recieveTicketDetails", true )
@@ -146,7 +166,6 @@ function ticketDone ( name, action, answere )
 	local player = client
 	local supporter = getPlayerName ( player )
 	if ticketPermitted[player] or vioGetElementData ( player, "adminlvl" ) >= 1 then
-		name = MySQL_Safe ( name )
 		-- Nachricht senden
 		if action == 0 then
 			answere = "Dein Ticket wurde ohne Begründung geschlossen."
@@ -154,8 +173,7 @@ function ticketDone ( name, action, answere )
 			outputChatBox ( "Antwort gesendet!", player, 0, 200, 0 )
 		end
 		outputLog ( "Antwort von "..supporter.." auf das Ticket von "..name.." geantwortet:\n"..answere )
-		answere = MySQL_Safe ( answere )
-		mysql_vio_query ( "INSERT INTO ticket_answeres ( name, admin, text ) VALUES ( '"..name.."', '"..supporter.."', '"..answere.."' )" )
+		dbExec( handler, "INSERT INTO ticket_answeres ( name, admin, text ) VALUES ( ?, ?, ? )", name, supporter, answere )
 		if getPlayerFromName ( name ) then
 			outputChatBox ( "Deine Anfrage wurde bearbeitet. Tippe /readticket, um die Antwort zu lesen.", getPlayerFromName ( name ), 200, 200, 0 )
 		end
@@ -170,7 +188,7 @@ function ticketDone ( name, action, answere )
 			end
 		end
 		-- Ticket schließen
-		mysql_vio_query ( "DELETE FROM tickets WHERE name LIKE '"..name.."'" )
+		dbExec ( handler, "DELETE FROM tickets WHERE name LIKE ?", name )
 		outputChatBox ( "Ticket geschlossen.", player, 200, 200, 0 )
 	end
 end

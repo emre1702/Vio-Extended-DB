@@ -123,66 +123,71 @@ function specialTuningVehExit ( player, seat )
 end
 
 
+local function trunkStorageServer_func_DB ( qh, element, value, take, player, veh ) 
+	local result = dbPoll( qh, 0 )
+	if result and result[1] then
+		local data = result[1]["Kofferraum"]
+		local drugs = tonumber ( gettok ( data, 1, string.byte ( '|' ) ) )
+		local mats = tonumber ( gettok ( data, 2, string.byte ( '|' ) ) )
+		local gun = tonumber ( gettok ( data, 3, string.byte ( '|' ) ) )
+		local ammo = tonumber ( gettok ( data, 4, string.byte ( '|' ) ) )
+		
+		if element == "drugs" or element == "mats" then
+			value = math.abs ( math.floor ( tonumber ( value ) ) )
+		end
+		
+		if take then
+			if element == "drugs" then
+				if drugs >= value then
+					drugs = drugs - value
+					vioSetElementData ( player, "drugs", vioGetElementData ( player, "drugs" ) + value )
+				end
+			elseif element == "mats" then
+				if mats >= value then
+					mats = mats - value
+					vioSetElementData ( player, "mats", vioGetElementData ( player, "mats" ) + value )
+				end
+			else
+				giveWeapon ( player, gun, ammo )
+				setPedWeaponSlot ( player, getSlotFromWeapon ( gun ) )
+				gun = 0
+				ammo = 0
+			end
+		else
+			if element == "drugs" then
+				if vioGetElementData ( player, "drugs" ) >= value then
+					drugs = drugs + value
+					vioSetElementData ( player, "drugs", vioGetElementData ( player, "drugs" ) - value )
+				end
+			elseif element == "mats" then
+				if vioGetElementData ( player, "mats" ) >= value then
+					mats = mats + value
+					vioSetElementData ( player, "mats", vioGetElementData ( player, "mats" ) - value )
+				end
+			else
+				gun = getPedWeapon ( player )
+				ammo = getPedTotalAmmo ( player )
+				takeWeapon ( player, gun )
+				setPedWeaponSlot ( player, 0 )
+			end
+		end
+		local string = tostring ( drugs.."|"..mats.."|"..gun.."|"..ammo.."|" )
+		local Besitzer = vioGetElementData ( veh, "owner" )
+		local slot = tonumber ( vioGetElementData ( veh, "carslotnr_owner" ) )
+		playSoundFrontEnd ( player, 40 )
+		
+		dbExec( handler, "UPDATE vehicles SET Koferraum = ? WHERE Besitzer LIKE ? AND Slot LIKE ?", string, Besitzer, slot )
+	end
+end
+
+
 -- TRUNK --
 function trunkStorageServer_func ( element, value, take )
 	
 	if source == client then
-		if tostring ( element ) == MySQL_Save ( element ) and tostring ( value ) == MySQL_Save ( value ) then
-			local player = source
-			local veh = vioGetElementData ( player, "clickedVehicle" )
-			
-			local data = MySQL_GetString( "vehicles", "Kofferraum", "Besitzer LIKE '"..vioGetElementData ( veh, "owner" ).."' AND Slot LIKE '"..vioGetElementData ( veh, "carslotnr_owner" ).."'" )
-			local drugs = tonumber ( gettok ( data, 1, string.byte ( '|' ) ) )
-			local mats = tonumber ( gettok ( data, 2, string.byte ( '|' ) ) )
-			local gun = tonumber ( gettok ( data, 3, string.byte ( '|' ) ) )
-			local ammo = tonumber ( gettok ( data, 4, string.byte ( '|' ) ) )
-			
-			if element == "drugs" or element == "mats" then
-				value = math.abs ( math.floor ( tonumber ( value ) ) )
-			end
-			
-			if take then
-				if element == "drugs" then
-					if drugs >= value then
-						drugs = drugs - value
-						vioSetElementData ( player, "drugs", vioGetElementData ( player, "drugs" ) + value )
-					end
-				elseif element == "mats" then
-					if mats >= value then
-						mats = mats - value
-						vioSetElementData ( player, "mats", vioGetElementData ( player, "mats" ) + value )
-					end
-				else
-					giveWeapon ( player, gun, ammo )
-					setPedWeaponSlot ( player, getSlotFromWeapon ( gun ) )
-					gun = 0
-					ammo = 0
-				end
-			else
-				if element == "drugs" then
-					if vioGetElementData ( player, "drugs" ) >= value then
-						drugs = drugs + value
-						vioSetElementData ( player, "drugs", vioGetElementData ( player, "drugs" ) - value )
-					end
-				elseif element == "mats" then
-					if vioGetElementData ( player, "mats" ) >= value then
-						mats = mats + value
-						vioSetElementData ( player, "mats", vioGetElementData ( player, "mats" ) - value )
-					end
-				else
-					gun = getPedWeapon ( player )
-					ammo = getPedTotalAmmo ( player )
-					takeWeapon ( player, gun )
-					setPedWeaponSlot ( player, 0 )
-				end
-			end
-			local string = tostring ( drugs.."|"..mats.."|"..gun.."|"..ammo.."|" )
-			local Besitzer = vioGetElementData ( veh, "owner" )
-			local slot = tonumber ( vioGetElementData ( veh, "carslotnr_owner" ) )
-			playSoundFrontEnd ( player, 40 )
-			
-			MySQL_SetString ( "vehicles", "Kofferraum", string, "Besitzer LIKE '"..Besitzer.."' AND Slot LIKE '" ..slot.. "' ")
-		end
+		local player = source
+		local veh = vioGetElementData ( player, "clickedVehicle" )
+		dbQuery( trunkStorageServer_func_DB, { element, value, take, player, veh }, handler, "SELECT Koferraum FROM vehicles WHERE Besitzer LIKE ? AND Slot LIKE ?", vioGetElementData ( veh, "owner" ), vioGetElementData ( veh, "carslotnr_owner" ) )
 	end
 end
 addEvent ( "trunkStorageServer", true )

@@ -558,6 +558,14 @@ end
 
 addCommandHandler ( "tie", tie_func )
 
+
+local function fstate_func_depotgeld_DB ( qh, player ) 
+	local result = dbPoll( qh, 0 )
+	if result and result[1] then
+		outputChatBox ( "Geld in der Fraktionskasse: "..result[1]["DepotGeld"], player, 200, 200, 0 )
+	end
+end
+
 function fstate_func(player)
 
 	if isMafia ( player ) then
@@ -665,7 +673,7 @@ function fstate_func(player)
 		outputChatBox ( "Raketen: "..BikerRaketen.." von "..raketencap, player, 0, 125, 0 )
 		outputChatBox ( "Uzis: "..BikerSpezwaffen.." von "..spezguncap, player, 0, 125, 0 )
 	elseif isCop ( player ) or isFBI ( player ) or isArmy ( player ) then
-		outputChatBox ( "Geld in der Fraktionskasse: "..MySQL_GetString("fraktionen", "DepotGeld", "ID LIKE '1'"), player, 200, 200, 0 )
+		dbQuery( fstate_func_depotgeld_DB, { player }, handler, "SELECT DepotGeld FROM fraktionen WHERE ID LIKE '1'" )
 	end
 end
 
@@ -843,7 +851,7 @@ function uninvite_func ( player, cmd, target )
 				fraktionMembers[faction][target] = nil
 				vioSetElementData ( target, "fraktion", 0 )
 				outputChatBox ( "Du wurdest soeben aus deiner Fraktion geworfen!", target, 0, 125, 0 )
-				MySQL_SetString ( "userdata", "LastFactionChange", timestampOptical (), "Name LIKE '"..getPlayerName(target).."'")
+				dbExec( handler, "UPDATE userdata SET LastFactionChange = ? WHERE Name LIKE ?", timestampOptical(), getPlayerName( target ) )
 				outputChatBox ( "Du hast den Spieler "..getPlayerName(target).." aus deiner Fraktion entfernt!", player, 0, 125, 0 )
 				
 			else
@@ -866,6 +874,14 @@ end
 
 addCommandHandler ( "uninvite", uninvite_func )
 
+
+local function getchangestate_func_DB ( qh, player )
+	local result = dbPoll( qh, 0 )
+	if result and result[1] then
+		outputChatBox ( "Letzter Fraktions-Uninvite: ".. result[1]["LastFactionChange"], player, 200, 200, 0 )
+	end
+end
+
 function getchangestate_func ( player, cmd, target )
 
 	local target = findPlayerByName( target )
@@ -874,7 +890,7 @@ function getchangestate_func ( player, cmd, target )
 	
 		if vioGetElementData ( player, "adminlvl" ) >= 1 or vioGetElementData ( player, "rang" ) >= 4 then
 		
-			outputChatBox ( "Letzter Fraktions-Uninvite: "..tostring ( MySQL_GetString ( "userdata", "LastFactionChange", "Name LIKE '"..getPlayerName(target).."'") ), player, 200, 200, 0 )
+			dbQuery( getchangestate_func_DB, { player }, handler, "SELECT LastFactionChange FROM userdata WHERE Name LIKE ?", getPlayerName( target ) )
 			
 		else
 		

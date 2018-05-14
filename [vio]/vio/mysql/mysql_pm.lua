@@ -1,14 +1,25 @@
-﻿function pm_func ( player, cmd, target, ... )
+﻿local function pm_func_DB ( qh, msg, pname, target, player )
+	local result = dbPoll( qh, 0 )
+	if result and result[1] then
+		local result = result[1]["Name"]
+		offlinemsg ( msg, pname, target )
+		outputChatBox ( "Der Spieler ist offline - die Nachricht wird später zugestellt!", player, 200, 200, 0 )
+		--takeMSGMoney ( player )
+	else
+		outputChatBox ( "Der Spieler existiert nicht!", player, 125, 0, 0 )
+	end
+end
+
+
+function pm_func ( player, cmd, target, ... )
 
 	if vioGetElementData ( player, "adminlvl" ) < 1 then
 		outputChatBox ( "PMs sind deaktiviert! Bitte nutze /call, /sms oder schreibe eine E-Mail.", player, 125, 0, 0 )
 		return true
 	end
 	
-	
 	local parametersTable = {...}
-	local msg = MySQL_Save ( table.concat( parametersTable, " " ) )
-	target = MySQL_Save ( target )
+	local msg = table.concat( parametersTable, " " )
 	local money = getElementData ( player, "money" )
 	local pname = getPlayerName ( player )
 	if true then
@@ -20,18 +31,7 @@
 					outputChatBox ( msg, getPlayerFromName(target), 200, 200, 0 )
 					--takeMSGMoney ( player )
 				else
-					if msg == MySQL_Save ( msg ) and sender == MySQL_Save ( sender ) and empfaenger == MySQL_Save ( empfaenger ) then
-						local result = MySQL_GetString( "players", "Name", "Name LIKE '"..target.."'" )
-						if result then
-							offlinemsg ( msg, pname, target )
-							outputChatBox ( "Der Spieler ist offline - die Nachricht wird später zugestellt!", player, 200, 200, 0 )
-							--takeMSGMoney ( player )
-						else
-							outputChatBox ( "Der Spieler existiert nicht!", player, 125, 0, 0 )
-						end
-					else
-						outputChatBox ( "Deine Nachricht enthaelt ungueltige Zeichen!", player, 125, 0, 0 )
-					end
+					dbQuery( pm_func_DB, { msg, pname, target, player }, handler, "SELECT Name FROM players WHERE Name LIKE ?", target )
 				end
 			else
 				outputChatBox ( "Gebrauch: /pm [Empfaenger] [Text]", player, 125, 0, 0 )
@@ -47,27 +47,28 @@ function offlinemsg ( msg, sender, empfaenger )
 
 	datum = timestamp()
 	--if msg == MySQL_Save ( msg ) and sender == MySQL_Save ( sender ) and empfaenger == MySQL_Save ( empfaenger ) then
-		mysql_query(handler, "INSERT INTO pm (Sender, Empfaenger, Text, Datum) VALUES ('"..sender.."','"..empfaenger.."','"..msg.."','"..datum.."')")
+		dbExec(handler, "INSERT INTO pm (Sender, Empfaenger, Text, Datum) VALUES (?, ?, ?,'"..datum.."')", sender, empfaenger, msg )
 	--end
 end
 
-function checkmsgs ( player )
 
-	local i = 1
-	while true and i <= 10 do
-		local msg = MySQL_GetString( "pm", "Text", "Empfaenger LIKE '"..getPlayerName(player).."'" )
-		if msg then
-			local datum = MySQL_GetString( "pm", "Datum", "Empfaenger LIKE '"..getPlayerName(player).."'" )
-			local sender = MySQL_GetString( "pm", "Sender", "Empfaenger LIKE '"..getPlayerName(player).."'" )
+local function checkmsgs_DB ( qh, player )
+	local result = dbPoll( qh, 0 )
+	if result and result[1] then
+		for i=1, #result do
+			local msg = result[i]["Text"]
+			local datum = result[i]["Datum"]
+			local sender = result[i]["Sender"]
 			local text = msg
 			local msg = "Nachricht von "..sender.."("..datum.."): "..msg
 			outputChatBox ( msg, player, 200, 200, 0 )
-			MySQL_DelRow("pm", "Empfaenger LIKE '"..getPlayerName(player).."' AND Text LIKE '"..text.."' AND Sender LIKE '"..sender.."' AND Datum LIKE '"..datum.."'")
-			i = i + 1
-		else
-			break
 		end
+		dbExec( handler, "REMOVE FROM pm WHERE Empfaenger LIKE ?", getPlayerName( player ) )
 	end
+end
+
+function checkmsgs ( player )
+	dbQuery( checkmsgs_DB, { player }, handler, "SELECT * FROM pm WHERE Empfaenger LIKE ?", getPlayerName( player ) )
 end
 
 function takeMSGMoney ( player )

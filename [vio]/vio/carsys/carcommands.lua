@@ -51,7 +51,7 @@ function towveh_func ( player, command, towcar )
 		triggerClientEvent ( player, "infobox_start", getRootElement(), "\nGebrauch:\n/towveh\n[Fahrzeugnummer]", 5000, 125, 0, 0 )
 	else
 		if tonumber(vioGetElementData ( player, "carslot"..towcar )) >= 1 then
-			local pname = MySQL_Save ( getPlayerName ( player ) )
+			local pname = getPlayerName ( player )
 			if vioGetElementData ( player, "money" ) >= 35 then
 				if respawnPrivVeh ( towcar, pname ) then
 					vioSetElementData ( player, "money", tonumber(vioGetElementData ( player, "money" )) - 35 )
@@ -73,71 +73,69 @@ addEvent ( "respawnPrivVehClick", true )
 addEventHandler ( "respawnPrivVehClick", getRootElement(), towveh_func )
 addCommandHandler ( "towveh", towveh_func )
 
-function sellcarto_func ( player, cmd, target, price, pSlot )
 
+local function sellcarto_func_DB ( qh, player, pname, target, price, pSlot, tSlot )
+	local result = dbPoll( qh, 0 )
+	if not result or not result[1] or tonumber( result[1]["AuktionsID"] ) == 0 then
+		if tSlot and vioGetElementData ( target, "carslot"..tSlot ) == 0 and vioGetElementData ( player, "carslot"..pSlot ) > 0 then
+			local veh = _G[getPrivVehString ( pname, pSlot )]
+			if tonumber ( price ) then
+				price = math.abs ( math.floor ( tonumber ( price ) ) )
+				if isElement ( veh ) then
+					if ( premiumBuyCars[getElementModel(veh)] and vioGetElementData ( target, "premium" ) ) or not premiumBuyCars[getElementModel(veh)] then
+						if vioGetElementData ( target, "curcars" ) < vioGetElementData ( target, "maxcars" ) then
+							local model = getElementModel ( veh )
+							outputChatBox ( getPlayerName ( player ).." bietet dir folgendes Fahrzeug für "..price.." $ an: "..getVehicleName ( veh ), target, 0, 125, 0 )
+							outputChatBox ( "Tippe /buy car, um das Fahrzeug zu kaufen.", target, 0, 125, 0 )
+							outputChatBox ( "Du hast "..getPlayerName ( target ).." dein Fahrzeug aus Slot Nr. "..pSlot.." angeboten.", player, 200, 200, 0 )
+							
+							vioSetElementData ( target, "carToBuyFrom", player )
+							vioSetElementData ( target, "carToBuySlot", tonumber ( pSlot ) )
+							vioSetElementData ( target, "carToBuyPrice", price )
+							vioSetElementData ( target, "carToBuyModel", getElementModel ( veh ) )
+						else
+							outputChatBox ( "Der Spieler hat keinen freien Fahrzeugslot mehr!", player, 125, 0, 0 )
+						end
+					else
+						outputChatBox ( "Du kannst keine Premium Fahrzeuge an nicht Premiumnutzer weitergeben!", player, 125, 0, 0 )
+					end
+				else
+					outputChatBox ( "Ungueltiges Fahrzeug! Gebrauch: /sellcarto [Name] [Preis] [Eigener Slot]", player, 125, 0, 0 )
+				end
+			else
+				outputChatBox ( "Ungueltiger Preis! Gebrauch: /sellcarto [Name] [Preis] [Eigener Slot]", player, 125, 0, 0 )
+			end
+		else
+			outputChatBox ( "Ungueltiger Fahrzeugslot! Gebrauch: /sellcarto [Name] [Preis] [Eigener Slot]", player, 125, 0, 0 )
+		end
+	else
+		outputChatBox ( "Dieses Fahrzeuge wird momentan versteigert!", player, 125, 0, 0 )
+	end
+end
+
+function sellcarto_func ( player, cmd, target, price, pSlot )
 	if target and pSlot and getPlayerFromName ( target ) and tonumber ( pSlot ) then
-		pSlot = MySQL_Save ( pSlot )
 		tSlot = getFreeCarSlot ( getPlayerFromName ( target ) )
 		local pname = getPlayerName ( player )
 		local target = getPlayerFromName ( target )
-		if tonumber ( MySQL_GetString("vehicles", "AuktionsID", "Besitzer LIKE '"..pname.."' AND Slot LIKE '"..tonumber(pSlot).."'") ) == 0 then
-			if tSlot and vioGetElementData ( target, "carslot"..tSlot ) == 0 and vioGetElementData ( player, "carslot"..pSlot ) > 0 then
-				local veh = _G[getPrivVehString ( pname, pSlot )]
-				if tonumber ( price ) then
-					price = math.abs ( math.floor ( tonumber ( price ) ) )
-					if isElement ( veh ) then
-						if ( premiumBuyCars[getElementModel(veh)] and vioGetElementData ( target, "premium" ) ) or not premiumBuyCars[getElementModel(veh)] then
-							if vioGetElementData ( target, "curcars" ) < vioGetElementData ( target, "maxcars" ) then
-								local model = getElementModel ( veh )
-								outputChatBox ( getPlayerName ( player ).." bietet dir folgendes Fahrzeug für "..price.." $ an: "..getVehicleName ( veh ), target, 0, 125, 0 )
-								outputChatBox ( "Tippe /buy car, um das Fahrzeug zu kaufen.", target, 0, 125, 0 )
-								outputChatBox ( "Du hast "..getPlayerName ( target ).." dein Fahrzeug aus Slot Nr. "..pSlot.." angeboten.", player, 200, 200, 0 )
-								
-								vioSetElementData ( target, "carToBuyFrom", player )
-								vioSetElementData ( target, "carToBuySlot", tonumber ( pSlot ) )
-								vioSetElementData ( target, "carToBuyPrice", price )
-								vioSetElementData ( target, "carToBuyModel", getElementModel ( veh ) )
-							else
-								outputChatBox ( "Der Spieler hat keinen freien Fahrzeugslot mehr!", player, 125, 0, 0 )
-							end
-						else
-							outputChatBox ( "Du kannst keine Premium Fahrzeuge an nicht Premiumnutzer weitergeben!", player, 125, 0, 0 )
-						end
-					else
-						outputChatBox ( "Ungueltiges Fahrzeug! Gebrauch: /sellcarto [Name] [Preis] [Eigener Slot]", player, 125, 0, 0 )
-					end
-				else
-					outputChatBox ( "Ungueltiger Preis! Gebrauch: /sellcarto [Name] [Preis] [Eigener Slot]", player, 125, 0, 0 )
-				end
-			else
-				outputChatBox ( "Ungueltiger Fahrzeugslot! Gebrauch: /sellcarto [Name] [Preis] [Eigener Slot]", player, 125, 0, 0 )
-			end
-		else
-			outputChatBox ( "Dieses Fahrzeuge wird momentan versteigert!", player, 125, 0, 0 )
-		end
+		dbQuery( sellcarto_func_DB, { player, pname, target, price, pSlot, tSlot }, handler, "SELECT AuktionsID FROM vehicles WHERE Besitzer LIKE ? AND Slot LIKE ?", pname, tonumber( pSlot ) )
 	else
 		outputChatBox ( "Gebrauch: /sellcarto [Name] [Preis] [Eigener Slot]", player, 125, 0, 0 )
 	end
 end
 addCommandHandler ( "sellcarto", sellcarto_func )
 
-function respawnPrivVeh ( carslot, pname )
 
+function respawnPrivVeh ( carslot, pname )
 	if not isElement ( _G[getPrivVehString ( pname, carslot )] ) or ( not getVehicleOccupant ( _G[getPrivVehString ( pname, carslot )] ) and not getVehicleOccupant ( _G[getPrivVehString ( pname, carslot )], 1 ) and not getVehicleOccupant ( _G[getPrivVehString ( pname, carslot )], 2 ) and not getVehicleOccupant ( _G[getPrivVehString ( pname, carslot )], 3 ) ) then
-		if tonumber ( MySQL_GetString("vehicles", "AuktionsID", "Besitzer LIKE '"..pname.."' AND Slot LIKE '"..carslot.."'") ) == 0 then
-			local dsatz
-			local result = mysql_query ( handler, "SELECT * from vehicles WHERE Besitzer LIKE '"..pname.."' AND Slot LIKE '"..carslot.."'" )
-			if result then
-				if ( mysql_num_rows ( result ) > 0 ) then
-					dsatz = mysql_fetch_assoc ( result )
-				end
-				mysql_free_result ( result )
-			end
+		local result = dbPoll( dbQuery( handler, "SELECT * FROM vehicles WHERE Besitzer LIKE ? AND Slot LIKE ?", pname, carslot ), -1 )
+		if result and result[1] and tonumber( result[1]["AuktionsID"] ) == 0 then
+			local dsatz = result[1]
 			
 			destroyMagnet ( _G[getPrivVehString ( pname, carslot )] )
 			local Besitzer = pname
 			local Slot = carslot
-			MySQL_SetString("vehicles", "Benzin", vioGetElementData(_G[getPrivVehString ( pname, carslot )],"fuelstate"), "Besitzer LIKE '"..pname.."' AND Slot LIKE '"..carslot.."'")
+			dbExec( handler, "UPDATE vehicles SET Benzin=? WHERE Besitzer LIKE ? AND Slot LIKE ?", vioGetElementData(_G[getPrivVehString ( pname, carslot )],"fuelstate"), pname, carslot )
 			if vioGetElementData ( _G[getPrivVehString ( pname, carslot )], "special" ) == 2 then 
 				detachElements ( _G["ObjYacht"..Besitzer..Slot], _G[getPrivVehString ( pname, carslot )] )
 				destroyElement ( _G["ObjYacht"..Besitzer..Slot] )
@@ -145,7 +143,9 @@ function respawnPrivVeh ( carslot, pname )
 			end
 			destroyElement ( _G[getPrivVehString ( pname, carslot )] )
 			local Typ = dsatz["Typ"]
-			local Last_Login_Besitzer_Tag = MySQL_GetString("players", "Last_login", "Name LIKE '" ..pname.."'")
+			-- deaktiviert by Bonus, da nicht verwendet und unnötig Datenbank-Zugriff
+			--local lastloginbesitzerresult = dbPoll( dbQuery( handler, "SELECT Last_login FROM players WHERE Name LIKE ?", pname ), -1 )
+			--local Last_Login_Besitzer_Tag = result and result[1] and result[1]["Last_login"] or 0
 			local Tuning = dsatz["Tuning"]
 			local Spawnpos_X = dsatz["Spawnpos_X"]
 			local Spawnpos_Y = dsatz["Spawnpos_Y"]
@@ -223,7 +223,7 @@ function deleteVeh_func ( towcar, pname, veh, reason )
 		end
 		outputLog ( "Fahrzeug von "..pname.." ( "..towcar.." ) wurde von "..admin.." geloescht. | Modell: "..getElementModel(veh).." |", "autodelete" )
 		destroyElement ( veh )
-		MySQL_DelRow("vehicles", "Besitzer LIKE '"..pname.."' AND Slot LIKE '"..towcar.."'")
+		dbExec( handler, "DELETE FROM vehicles WHERE Besitzer LIKE ? AND Slot LIKE ?", pname, towcar )
 	end
 end
 addEvent ( "deleteVeh", true )
@@ -260,16 +260,7 @@ function park_func ( player, command )
 				local Distance = vioGetElementData ( veh, "distance" )
 				local slot = vioGetElementData ( veh, "carslotnr_owner" )
 
-				MySQL_SetString("vehicles", "Spawnpos_X", Spawnpos_X, "Besitzer LIKE '" ..pname.."' AND Slot LIKE '" ..slot.. "' ")
-				MySQL_SetString("vehicles", "Spawnpos_Y", Spawnpos_Y, "Besitzer LIKE '" ..pname.."' AND Slot LIKE '" ..slot.. "' ")
-				MySQL_SetString("vehicles", "Spawnpos_Z", Spawnpos_Z, "Besitzer LIKE '" ..pname.."' AND Slot LIKE '" ..slot.. "' ")
-				MySQL_SetString("vehicles", "Spawnrot_X", Spawnrot_X, "Besitzer LIKE '" ..pname.."' AND Slot LIKE '" ..slot.. "' ")
-				MySQL_SetString("vehicles", "Spawnrot_Y", Spawnrot_Y, "Besitzer LIKE '" ..pname.."' AND Slot LIKE '" ..slot.. "' ")
-				MySQL_SetString("vehicles", "Spawnrot_Z", Spawnrot_Z, "Besitzer LIKE '" ..pname.."' AND Slot LIKE '" ..slot.. "' ")
-				MySQL_SetString("vehicles", "Farbe", color, "Besitzer LIKE '" ..pname.."' AND Slot LIKE '" ..slot.. "' ")
-				MySQL_SetString("vehicles", "Paintjob", Paintjob, "Besitzer LIKE '" ..pname.."' AND Slot LIKE '" ..slot.. "' ")
-				MySQL_SetString("vehicles", "Benzin", Benzin, "Besitzer LIKE '" ..pname.."' AND Slot LIKE '" ..slot.. "' ")
-				MySQL_SetString("vehicles", "Distance", Distance, "Besitzer LIKE '" ..pname.."' AND Slot LIKE '" ..slot.. "' ")
+				dbExec( handler, "UPDATE vehicles SET Spawnpos_X = ?, Spawnpos_Y = ?, Spawnpos_Z = ?, Spawnrot_X = ?, Spawnrot_Y = ?, Spawnrot_Z = ?, Farbe = ?, Paintjob = ?, Benzin = ?, Distance = ? WHERE Besitzer LIKE ? AND Slot LIKE ?", Spawnpos_X, Spawnpos_Y, Spawnpos_Z, Spawnrot_X, Spawnrot_Y, Spawnrot_Z, color, Paintjob, Benzin, Distance, pname, slot )
 			else
 				outputChatBox ( "Dieses Fahrzeug kannst du nicht in der Stadt parken!", player, 125, 0, 0 )
 			end
@@ -312,6 +303,18 @@ addEvent ( "lockPrivVehClick", true )
 addEventHandler ( "lockPrivVehClick", getRootElement(), lock_func )
 addCommandHandler ( "lock", lock_func )
 
+
+local function vehinfos_func_DB ( qh, player, pname, i )
+	local result = dbPoll( qh, 0 )
+	if result and result[1] then
+		if tonumber( result[1]["AuktionsID"] ) == 0 then
+			outputChatBox ( "Dein Fahrzeug in Slot NR "..i.." muss zuerst mit /towveh "..i.." respawned werden!", player, 125, 0, 0 )
+		else
+			outputChatBox ( "Dein Fahrzeug in Slot NR "..i.." steht momentan zum Verkauf!", player, 125, 0, 0 )
+		end
+	end
+end
+
 function vehinfos_func ( player )
 
 	local curcars = vioGetElementData ( player, "curcars" )
@@ -334,11 +337,7 @@ function vehinfos_func ( player )
 					outputChatBox ( "Slot NR "..i..": "..getVehicleName ( veh )..", steht momentan in "..getZoneName( x,y,z )..", "..getZoneName( x,y,z, true ), player, 0, 0, 200 )
 				end
 			else
-				if tonumber ( MySQL_GetString("vehicles", "AuktionsID", "Besitzer LIKE '"..pname.."' AND Slot LIKE '"..i.."'") ) == 0 then
-					outputChatBox ( "Dein Fahrzeug in Slot NR "..i.." muss zuerst mit /towveh "..i.." respawned werden!", player, 125, 0, 0 )
-				else
-					outputChatBox ( "Dein Fahrzeug in Slot NR "..i.." steht momentan zum Verkauf!", player, 125, 0, 0 )
-				end
+				dbQuery( vehinfos_func_DB, { player, pname, i }, handler, "SELECT AuktionsID FROM vehicles WHERE Besitzer LIKE ? AND Slot LIKE ?", pname, i )
 			end
 		end
 	end
@@ -357,12 +356,11 @@ function vehhelp_func ( player )
 end
 addCommandHandler ( "vehhelp", vehhelp_func )
 
-function sellcar_func ( player, cmd, slot )
 
-	local slot = tonumber(slot)
-	if vioGetElementData ( player, "carslot"..slot ) > 0 then
-		local pname = MySQL_Save ( getPlayerName(player) )
-		if tonumber ( MySQL_GetString("vehicles", "AuktionsID", "Besitzer LIKE '"..pname.."' AND Slot LIKE '"..slot.."'") ) == 0 then
+local function sellcar_func_DB( qh, player, pname, slot )
+	local result = dbPoll( qh, 0 )
+	if result and result[1] then
+		if tonumber( result[1]["AuktionsID"] ) == 0 then
 			local veh = _G[getPrivVehString ( pname, slot )]
 			if veh then
 				destroyMagnet ( veh )
@@ -381,7 +379,7 @@ function sellcar_func ( player, cmd, slot )
 					vioSetElementData ( player, "spawnint", 0 )
 					vioSetElementData ( player, "spawndim", 0 )
 				end
-				MySQL_DelRow("vehicles", "Besitzer LIKE '"..pname.."' AND Slot LIKE '"..vioGetElementData(veh, "carslotnr_owner" ).."'")
+				dbExec( handler, "DELETE FROM vehicles WHERE Besitzer LIKE ? AND Slot LIKE ?", pname, vioGetElementData(veh, "carslotnr_owner" ) )
 				vioSetElementData(player,"curcars",tonumber(vioGetElementData ( player, "curcars" ))-1)
 				destroyElement ( veh )
 				vioSetElementData ( player, "money", vioGetElementData ( player, "money" )+price/100*75 )
@@ -394,11 +392,79 @@ function sellcar_func ( player, cmd, slot )
 		else
 			outputChatBox ( "Dieses Fahrzeug kannst du nicht respawnen, da es zum Verkauf steht.", player, 125, 0, 0 )
 		end
+	end
+end
+
+function sellcar_func ( player, cmd, slot )
+	local slot = tonumber(slot)
+	if vioGetElementData ( player, "carslot"..slot ) > 0 then
+		local pname = getPlayerName(player)
+		dbQuery( sellcar_func_DB, { player, pname, slot }, handler, "SELECT AuktionsID FROM vehicles WHERE Besitzer LIKE ? AND Slot LIKE ?", pname, tonumber( pSlot ) )
 	else
 		outputChatBox ( "Ungueltiger Slot!", player, 125, 0, 0 )
 	end
 end
 addCommandHandler ( "sellcar", sellcar_func )
+
+
+local function accept_sellcarto_DB ( qh, player, target, pname, pSlot, price, tSlot, model, money ) 
+	local result = dbPoll( qh, 0 )
+	if result and result[1] then
+		if tonumber( result[1]["AuktionsID"] ) == 0 then
+			if vioGetElementData ( player, "carslot"..pSlot ) > 0 then
+				local veh = _G[getPrivVehString ( pname, pSlot )]
+				if isElement ( veh ) then
+					if model == getElementModel ( veh ) then
+						if ( premiumBuyCars[getElementModel(veh)] and vioGetElementData ( target, "premium" ) ) or not premiumBuyCars[getElementModel(veh)] then
+							if vioGetElementData ( target, "curcars" ) < vioGetElementData ( target, "maxcars" ) then
+								outputLog ( getPlayerName ( accepter ).." hat von "..getPlayerName ( player ).." ein Fahrzeug fuer "..price.." $ ( Model: "..model.." )", "sellcar" )
+								
+								local id = result[1]["ID"]
+								
+								outputChatBox ( "Du hast dein Fahrzeug in Slot Nr. "..pSlot.." an "..getPlayerName ( target ).." gegeben!", player, 0, 125, 0 )
+								outputChatBox ( "Du hast ein Fahrzeug in Slot Nr. "..tSlot.." von "..getPlayerName ( player ).." erhalten!", target, 0, 125, 0 )
+								
+								dbExec( handler, "UPDATE vehicles SET Besitzer = ?, Slot = ?, Lights = ? WHERE ID LIKE ?", getPlayerName( target ), tonumber( tSlot ), "|255|255|255|", id )
+							
+								vioSetElementData ( target, "carslot"..tSlot, vioGetElementData ( player, "carslot"..pSlot ) )
+								vioSetElementData ( player, "carslot"..pSlot, 0 )
+								vioSetElementData ( target, "curcars", vioGetElementData ( target, "curcars" ) + 1 )
+								vioSetElementData ( player, "curcars", vioGetElementData ( player, "curcars" ) - 1 )
+								vioSetElementData ( veh, "lcolor", "|255|255|255|" )
+								
+								setPrivVehCorrectLightColor ( veh )
+								
+								vioSetElementData ( veh, "owner", getPlayerName ( target ) )
+								vioSetElementData ( veh, "name", "privVeh"..getPlayerName(target)..tSlot )
+								vioSetElementData ( veh, "carslotnr_owner", tSlot )
+								
+								_G[getPrivVehString ( getPlayerName(target), tSlot )] = veh
+								_G[getPrivVehString ( pname, pSlot )] = nil
+								
+								SaveCarData ( player )
+								SaveCarData ( target )
+								
+								vioSetElementData ( target, "bankmoney", money - price )
+								vioSetElementData ( player, "bankmoney", vioGetElementData ( player, "bankmoney" ) + price )
+								
+								casinoMoneySave ( target )
+								casinoMoneySave ( player )
+							else
+								infobox ( accepter, "Du hast keinen\nfreien Fahrzeugslot mehr!", 5000, 125, 0, 0 )
+							end
+						end
+					else
+						infobox ( accepter, "Ein Fehler\nist aufgetreten.\nBitte lass dir\ndas Angebot erneut\nschicken!", 5000, 125, 0, 0 )
+					end
+				else
+					infobox ( accepter, "Ein Fehler\nist aufgetreten.\nBitte lass dir\ndas Angebot erneut\nschicken!", 5000, 125, 0, 0 )
+				end
+			else
+				infobox ( accepter, "Der Verkaufer hat\ndas Fahrzeug nicht\nmehr!", 5000, 125, 0, 0 )
+			end
+		end
+	end
+end
 
 function accept_sellcarto ( accepter, _, cmd )
 	if cmd == "car" then
@@ -414,61 +480,7 @@ function accept_sellcarto ( accepter, _, cmd )
 				if tonumber ( pSlot ) and tSlot then
 					pSlot = tonumber ( pSlot )
 					local pname = getPlayerName ( player )
-					if tonumber ( MySQL_GetString("vehicles", "AuktionsID", "Besitzer LIKE '"..pname.."' AND Slot LIKE '"..tonumber(pSlot).."'") ) == 0 then
-						if vioGetElementData ( player, "carslot"..pSlot ) > 0 then
-							local veh = _G[getPrivVehString ( pname, pSlot )]
-							if isElement ( veh ) then
-								if model == getElementModel ( veh ) then
-									if ( premiumBuyCars[getElementModel(veh)] and vioGetElementData ( target, "premium" ) ) or not premiumBuyCars[getElementModel(veh)] then
-										if vioGetElementData ( target, "curcars" ) < vioGetElementData ( target, "maxcars" ) then
-											outputLog ( getPlayerName ( accepter ).." hat von "..getPlayerName ( player ).." ein Fahrzeug fuer "..price.." $ ( Model: "..model.." )", "sellcar" )
-											
-											local id = MySQL_GetString("vehicles", "ID", "Besitzer LIKE '"..getPlayerName(player).."' AND Slot LIKE '"..tonumber(pSlot).."'")
-											
-											outputChatBox ( "Du hast dein Fahrzeug in Slot Nr. "..pSlot.." an "..getPlayerName ( target ).." gegeben!", player, 0, 125, 0 )
-											outputChatBox ( "Du hast ein Fahrzeug in Slot Nr. "..tSlot.." von "..getPlayerName ( player ).." erhalten!", target, 0, 125, 0 )
-											
-											MySQL_SetString("vehicles", "Besitzer", getPlayerName(target), "ID LIKE '"..id.."'")
-											MySQL_SetString("vehicles", "Slot", tonumber ( tSlot ), "ID LIKE '"..id.."'")
-										
-											vioSetElementData ( target, "carslot"..tSlot, vioGetElementData ( player, "carslot"..pSlot ) )
-											vioSetElementData ( player, "carslot"..pSlot, 0 )
-											vioSetElementData ( target, "curcars", vioGetElementData ( target, "curcars" ) + 1 )
-											vioSetElementData ( player, "curcars", vioGetElementData ( player, "curcars" ) - 1 )
-											vioSetElementData ( veh, "lcolor", "|255|255|255|" )
-											
-											MySQL_SetString("vehicles", "Lights", "|255|255|255|", "ID LIKE '"..id.."'")
-											setPrivVehCorrectLightColor ( veh )
-											
-											vioSetElementData ( veh, "owner", getPlayerName ( target ) )
-											vioSetElementData ( veh, "name", "privVeh"..getPlayerName(target)..tSlot )
-											vioSetElementData ( veh, "carslotnr_owner", tSlot )
-											
-											_G[getPrivVehString ( getPlayerName(target), tSlot )] = veh
-											_G[getPrivVehString ( pname, pSlot )] = nil
-											
-											SaveCarData ( player )
-											SaveCarData ( target )
-											
-											vioSetElementData ( target, "bankmoney", money - price )
-											vioSetElementData ( player, "bankmoney", vioGetElementData ( player, "bankmoney" ) + price )
-											
-											casinoMoneySave ( target )
-											casinoMoneySave ( player )
-										else
-											infobox ( accepter, "Du hast keinen\nfreien Fahrzeugslot mehr!", 5000, 125, 0, 0 )
-										end
-									end
-								else
-									infobox ( accepter, "Ein Fehler\nist aufgetreten.\nBitte lass dir\ndas Angebot erneut\nschicken!", 5000, 125, 0, 0 )
-								end
-							else
-								infobox ( accepter, "Ein Fehler\nist aufgetreten.\nBitte lass dir\ndas Angebot erneut\nschicken!", 5000, 125, 0, 0 )
-							end
-						else
-							infobox ( accepter, "Der Verkaufer hat\ndas Fahrzeug nicht\nmehr!", 5000, 125, 0, 0 )
-						end
-					end
+					dbQuery( accept_sellcarto_DB, { player, target, pname, pSlot, price, tSlot, model, money }, handler, "SELECT ID, AuktionsID FROM vehicles WHERE Besitzer LIKE ? AND Slot LIKE ?", pname, tonumber( pSlot ) )
 				else
 					infobox ( accepter, "Ein Fehler\nist aufgetreten.\nBitte lass dir\ndas Angebot erneut\nschicken!", 5000, 125, 0, 0 )
 				end

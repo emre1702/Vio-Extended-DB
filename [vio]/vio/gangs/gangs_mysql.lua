@@ -4,32 +4,30 @@ addEvent ( "onLoggedInPlayerQuit", true )
 gangData = {}
 	gangData["ranks"] = {}
 
-function loadGangData ( gangID )
 
-	local gangDataDSatz
-	local house = houses["pickup"][gangID]
-	local gangDataResult = mysql_query ( handler, "SELECT * from gang_basic WHERE HausID LIKE '"..gangID.."'" )
-	if gangDataResult then
-		if ( mysql_num_rows ( gangDataResult ) > 0 ) then
-			gangDataDSatz = mysql_fetch_assoc ( gangDataResult )
-			mysql_free_result ( gangDataResult )
-			
-			gangData[gangID] = {}
-				gangData[gangID]["members"] = {}
-					gangData[gangID]["members"]["online"] = {}
-				gangData[gangID]["msg"] = MySQL_GetString ( "gang_basic", "LeaderMSG", "HausID LIKE '"..gangID.."'" )
-			
-			refreshGangRanks ( gangID )
-			vioSetElementData ( house, "gangHQOf", getGangName ( gangID ) )
-			return nil
-		end
+local function loadGangData_DB ( qh, gangID, house )
+	local result = dbPoll( qh, 0 )
+	if result and result[1] then
+		gangData[gangID] = {}
+			gangData[gangID]["members"] = {}
+				gangData[gangID]["members"]["online"] = {}
+			gangData[gangID]["msg"] = result[1]["LeaderMSG"]
+		
+		refreshGangRanks ( gangID )
+		vioSetElementData ( house, "gangHQOf", getGangName ( gangID ) )
+	else 
+		vioSetElementData ( house, "gangHQOf", false )
 	end
-	vioSetElementData ( house, "gangHQOf", false )
+end
+
+function loadGangData ( gangID )
+	local house = houses["pickup"][gangID]
+	dbQuery ( loadGangData_DB, { gangID, house }, handler, "SELECT * from gang_basic WHERE HausID LIKE ?", gangID )	
 end
 
 function setGangMSG ( id, msg )
 
-	MySQL_SetString ( "gang_basic", "LeaderMSG", msg, "HausID LIKE '"..id.."'" )
+	dbExec( handler, "UPDATE gang_basic SET LeaderMSG = ? WHERE HausID LIKE ?", msg, id )
 	gangData[id]["msg"] = msg
 end
 
@@ -54,10 +52,18 @@ function isFounderOfGang ( player, gangFounderID )
 			return true
 		end
 	else
-		return MySQL_DatasetExist ( "gang_members", "Name LIKE '"..player.."' AND Gang LIKE '"..gangFounderID.."' AND Founder = '1'" )
+		return MySQL_DatasetExist ( "gang_members", dbPrepareString( handler, "Name LIKE ? AND Gang LIKE ? AND Founder = '1'", player, gangFounderID ) )
 	end
 	gangFounderID = nil
 	return false
+end
+
+
+local function playerLoginGangMembers_DB( qh, player, pname )
+	local result = dbPoll( qh, 0 )
+	if result and result[1] then
+		gangData["ranks"][player] = tonumber ( result[1]["Rang"] )
+	end
 end
 
 function playerLoginGangMembers ()
@@ -68,7 +74,7 @@ function playerLoginGangMembers ()
 		if gang > 0 then
 			local pname = getPlayerName ( player )
 			gangData[gang]["members"]["online"][player] = true
-			gangData["ranks"][player] = tonumber ( MySQL_GetString ( "gang_members", "Rang", "Name LIKE '"..pname.."'" ) )
+			dbQuery( playerLoginGangMembers_DB, { player, pname }, handler, "SELECT Rang FROM gang_members WHERE Name LIKE ?", pname )
 		end
 	end
 end
@@ -103,17 +109,17 @@ end
 
 function getGangMaxMembers ( id )
 
-	return tonumber ( MySQL_GetString ( "gang_basic", "MaxMembers", "HausID LIKE '"..id.."'" ) )
+	return tonumber ( MySQL_GetString ( "gang_basic", "MaxMembers", dbPrepareString( handler, "HausID LIKE ?", id ) ) )
 end
 
 function getGangMoney ( id )
 
-	return tonumber ( MySQL_GetString ( "houses", "Kasse", "ID LIKE '"..id.."'" ) )
+	return tonumber ( MySQL_GetString ( "houses", "Kasse", dbPrepareString( handler, "ID LIKE ?", id ) ) )
 end
 
 function setGangMoney ( id, amount )
 
-	MySQL_SetString ( "houses", "Kasse", amount, "ID LIKE '"..id.."'" )
+	MySQL_SetString ( "houses", "Kasse", amount, dbPrepareString( handler, "ID LIKE ?", id ) )
 end
 
 function gangVehicleCost ( id )
@@ -123,30 +129,27 @@ end
 
 function getGangMats ( id )
 
-	return tonumber ( MySQL_GetString ( "gang_basic", "Mats", "HausID LIKE '"..id.."'" ) )
+	return tonumber ( MySQL_GetString ( "gang_basic", "Mats", dbPrepareString( handler, "HausID LIKE ?", id ) ) )
 end
 
 function setGangMats ( id, amount )
 
-	MySQL_SetString ( "gang_basic", "Mats", amount, "HausID LIKE '"..id.."'" )
+	MySQL_SetString ( "gang_basic", "Mats", amount, dbPrepareString( handler, "HausID LIKE ?", id ) )
 end
 
 function getGangDrugs ( id )
 
-	return tonumber ( MySQL_GetString ( "gang_basic", "Drugs", "HausID LIKE '"..id.."'" ) )
+	return tonumber ( MySQL_GetString ( "gang_basic", "Drugs", dbPrepareString( handler, "HausID LIKE ?", id ) ) )
 end
 
 function setGangDrugs ( id, amount )
 
-	MySQL_SetString ( "gang_basic", "Drugs", amount, "HausID LIKE '"..id.."'" )
+	MySQL_SetString ( "gang_basic", "Drugs", amount, dbPrepareString( handler, "HausID LIKE ?", id ) )
 end
 
 function getMembersInGangCount ( id )
-
-	local result = mysql_query ( handler, "SELECT * FROM gang_members WHERE Gang LIKE '"..id.."'" )
-	local num = mysql_num_rows ( result )
-	mysql_free_result ( result )
-	return tonumber ( num )
+	local result = dbPoll( dbQuery( handler, "SELECT * FROM gang_members WHERE Gang LIKE '"..id.."'" ), -1 )
+	return result and #result or 0
 end
 
 function getGangVehicleCost ( id )
@@ -158,23 +161,22 @@ function getGangMembersString ( id )
 
 	local string = ";"
 	local i = 0
-	local result = mysql_query ( handler, "SELECT * FROM gang_members WHERE Gang LIKE '"..id.."'" )
-	local num = mysql_num_rows ( result )
+	local result = dbPoll ( dbQuery ( handler, "SELECT * FROM gang_members WHERE Gang LIKE ?", id ), -1 )
+	local num = #result
 	if num > 0 then
-		dsatz = mysql_fetch_assoc ( result )
+		dsatz = table.remove( result, 1 )
 		while dsatz do
 			i = i + 1
 			string = string..dsatz["Name"].."|"..dsatz["Rang"]..";"
-			dsatz = mysql_fetch_assoc ( result )
+			dsatz = table.remove( result, 1 )
 		end
 	end
-	mysql_free_result ( result )
 	return string, i
 end
 
 function getGangName ( id )
 
-	return MySQL_GetString ( "gang_basic", "Name", "HausID LIKE '"..id.."'" )
+	return MySQL_GetString ( "gang_basic", "Name", dbPrepareString( handler, "HausID LIKE ?", id ) )
 end
 
 function removePlayerFromGang ( pname )
@@ -186,7 +188,7 @@ function removePlayerFromGang ( pname )
 		gangData[getPlayerGang ( pname )]["members"]["online"][getPlayerFromName ( pname )] = false
 		gangData["ranks"][getPlayerFromName ( pname )] = 0
 	end
-	mysql_vio_query ( "DELETE FROM gang_members WHERE Name LIKE '"..MySQL_Save ( pname ).."'" )
+	dbExec( handler, "DELETE FROM gang_members WHERE Name LIKE ?", pname )
 end
 
 function getPlayerGang ( pname )
@@ -194,7 +196,7 @@ function getPlayerGang ( pname )
 	if isElement ( pname ) then
 		pname = getPlayerName ( pname )
 	end
-	return tonumber ( MySQL_GetString ( "gang_members", "Gang", "Name LIKE '"..pname.."'" ) )
+	return tonumber ( MySQL_GetString ( "gang_members", "Gang", dbPrepareString( handler, "Name LIKE ?", pname ) ) )
 end
 
 function isInGang ( pname, id )
@@ -203,9 +205,9 @@ function isInGang ( pname, id )
 		pname = getPlayerName ( pname )
 	end
 	if not id then
-		return MySQL_DatasetExist ( "gang_members", "Name LIKE '"..pname.."'" )
+		return MySQL_DatasetExist ( "gang_members", dbPrepareString( handler, "Name LIKE ?", pname ) )
 	else
-		return MySQL_DatasetExist ( "gang_members", "Name LIKE '"..pname.."' AND Gang LIKE '"..id.."'" )
+		return MySQL_DatasetExist ( "gang_members", dbPrepareString( handler, "Name LIKE ? AND Gang LIKE ?", pname, id ) )
 	end
 end
 
@@ -214,7 +216,7 @@ function getPlayerGangRank ( player )
 	if player then
 		return gangData["ranks"][player]
 	else
-		return tonumber ( MySQL_GetString ( "gang_members", "Rang", "Name LIKE '"..getPlayerName(player).."'" ) )
+		return tonumber ( MySQL_GetString ( "gang_members", "Rang", dbPrepareString( handler, "Name LIKE ?", getPlayerName( player ) ) ) )
 	end
 end
 
@@ -223,7 +225,7 @@ function setPlayerGangRank ( pname, newRank )
 	if isElement ( pname ) then
 		pname = getPlayerName ( pname )
 	end
-	MySQL_SetString ( "gang_members", "Rang", newRank, "Name LIKE '"..pname.."'" )
+	MySQL_SetString ( "gang_members", "Rang", newRank, dbPrepareString( handler, "Name LIKE ?", pname ) )
 	local player = getPlayerFromName ( pname )
 	if player then
 		gangData["ranks"][player] = newRank
@@ -232,26 +234,26 @@ function setPlayerGangRank ( pname, newRank )
 	return true
 end
 
-function refreshGangRanks ( gangID )
 
-	local gDsatz
-	local gResult = mysql_query ( handler, "SELECT * from gang_basic WHERE HausID LIKE '"..gangID.."'" )
-	if gResult then
-		if ( mysql_num_rows ( gResult ) > 0 ) then
-			gDsatz = mysql_fetch_assoc ( gResult )
-			mysql_free_result ( gResult )
-			
-			local rang1 = gDsatz["Rang1"]
-			local rang2 = gDsatz["Rang2"]
-			local rang3 = gDsatz["Rang3"]
-			
-			gangData[gangID]["ranks"] = {}
-			
-			gangData[gangID]["ranks"][1] = rang1
-			gangData[gangID]["ranks"][2] = rang2
-			gangData[gangID]["ranks"][3] = rang3
-		end
+local function refreshGangRanks_DB ( qh, gangID )
+	local result = dbPoll( qh, 0 )
+	if result and result[1] then
+		local gDsatz = result[1] 
+		
+		local rang1 = gDsatz["Rang1"]
+		local rang2 = gDsatz["Rang2"]
+		local rang3 = gDsatz["Rang3"]
+		
+		gangData[gangID]["ranks"] = {}
+		
+		gangData[gangID]["ranks"][1] = rang1
+		gangData[gangID]["ranks"][2] = rang2
+		gangData[gangID]["ranks"][3] = rang3
 	end
+end
+
+function refreshGangRanks ( gangID )
+	dbQuery( refreshGangRanks_DB, { gangID }, handler, "SELECT * FROM gang_basic WHERE HausID LIKE ?", gangID )
 end
 
 function getGangRankName ( id, rank )
@@ -261,9 +263,8 @@ end
 
 function setGangRankName ( id, rank, string )
 
-	string = MySQL_Save ( string )
 	gangData[id]["ranks"][rank] = string
-	mysql_vio_query ( "UPDATE gang_basic SET Rang"..rank.." = '"..string.."' WHERE HausID LIKE '"..id.."'" )
+	dbExec( handler,"UPDATE gang_basic SET ?? = ? WHERE HausID LIKE ?", "Rang"..rank, string, id )
 	refreshGangRanks ( id )
 end
 
@@ -278,9 +279,9 @@ function insertInGang ( pname, id, rank, founder )
 	if getPlayerFromName ( pname ) then
 		gangData[id]["members"]["online"][getPlayerFromName ( pname )] = true
 	end
-	mysql_vio_query ( "INSERT INTO gang_members ( Name, Gang, Rang ) VALUES ( '"..pname.."', '"..id.."', '"..rank.."' )" )
+	dbExec( handler, "INSERT INTO gang_members ( Name, Gang, Rang ) VALUES ( ?, ?, ? )", pname, id, rank )
 	if founder then
-		mysql_vio_query ( "UPDATE gang_members SET Founder = '1' WHERE Name LIKE '"..pname.."'" )
+		dbExec( handler, "UPDATE gang_members SET Founder = '1' WHERE Name LIKE ?", pname )
 	end
 end
 
@@ -296,7 +297,7 @@ function getPlayerRankInGang ( pname )
 	if isElement ( pname ) then
 		pname = getPlayerName ( pname )
 	end
-	return tonumber ( MySQL_GetString ( "gang_members", "Rang", "Name LIKE '"..pname.."'" ) )
+	return tonumber ( MySQL_GetString ( "gang_members", "Rang", dbPrepareString( handler, "Name LIKE ?", pname ) ) )
 end
 
 function sendMessageToGangMembers ( id, msg )
@@ -310,13 +311,13 @@ end
 
 function createNewGang ( name, leaderSkin, houseID )
 
-	mysql_vio_query ( "INSERT INTO gang_basic ( Name, LeaderMSG, HausID ) VALUES ( '"..name.."', 'Gang wurde gegruendet.', '"..houseID.."' )" )
+	dbExec( handler, "INSERT INTO gang_basic ( Name, LeaderMSG, HausID ) VALUES ( ?, 'Gang wurde gegruendet.', ? )", name, houseID )
 	loadGangData ( houseID )
 end
 
 function getGangFromName ( name )
 
-	return tonumber ( MySQL_GetString ( "gang_basic", "HausID", "Name LIKE '"..name.."'" ) )
+	return tonumber ( MySQL_GetString ( "gang_basic", "HausID", dbPrepareString( handler, "Name LIKE ?", name ) ) )
 end
 
 function setGangName ( id, name )
@@ -328,14 +329,14 @@ end
 function deleteGang ( id )
 
 	sendMessageToGangMembers ( id, "Deine Gang wurde aufgeloest." )
-	mysql_vio_query ( "DELETE FROM gang_basic WHERE HausID LIKE '"..id.."'" )
-	mysql_vio_query ( "DELETE FROM gang_members WHERE Gang LIKE '"..id.."'" )
-	mysql_vio_query ( "DELETE FROM gang_vehicles WHERE GangID LIKE '"..id.."'" )
 	for key, index in pairs ( gangData[id]["members"]["online"] ) do
 		if isElement ( key ) then
 			gangData["ranks"][key] = nil
 		end
 	end
+	dbExec( handler, "DELETE FROM gang_basic WHERE HausID LIKE '"..id.."'" )
+	dbExec( handler, "DELETE FROM gang_members WHERE Gang LIKE '"..id.."'" )
+	dbExec( handler, "DELETE FROM gang_vehicles WHERE GangID LIKE '"..id.."'" )
 	gangData[id] = nil
 	vioSetElementData ( _G["HouseNR"..id], "gangHQOf", false )
 end

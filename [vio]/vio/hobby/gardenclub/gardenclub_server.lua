@@ -9,7 +9,10 @@ playerToGroundLevel = 4.3829 - 3.0744
 weedPlants =  {}
 
 local time = getMinTime () - 60 * 24 * 4
-mysql_vio_query ( "DELETE FROM weed WHERE time <= '"..time.."'" )
+addEventHandler( "onResourceStart", resourceRoot, function() 
+	dbExec ( handler, "DELETE FROM weed WHERE time <= ?", time )
+end )
+
 
 createBlip ( -2579.8989257813, 310.11599731445, 4.87415599823, 62, 2, 255, 0, 0, 255, 0, 200, getRootElement() )
 
@@ -37,10 +40,10 @@ addEventHandler ( "drugsSellHobby", getRootElement(), drugsSellHobby_func )
 
 function createWeedPlants ()
 
-	result = mysql_query ( handler, "SELECT * FROM weed" )
+	result = dbPoll ( dbQuery( handler, "SELECT * FROM weed" ), -1 )
 	weedCount = 0
 	if result then
-		weedData = mysql_fetch_assoc ( result )
+		weedData = table.remove ( result, 1 )
 		while weedData do
 			weedCount = weedCount + 1
 			
@@ -52,9 +55,8 @@ function createWeedPlants ()
 			local name = weedData["name"]
 			
 			addWeed ( id, x, y, z, time, name )
-			weedData = mysql_fetch_assoc ( result )
+			weedData = table.remove ( result, 1 )
 		end
-		mysql_free_result(result)
 	end
 	outputServerLog ( "Es wurden "..weedCount.." Hanfpflanzen gefunden!" )
 end
@@ -100,6 +102,23 @@ function addWeed ( id, x, y, z, time, name )
 	end
 end
 
+
+local function grow_func_DB ( qh, x, y, z, time, name, player )
+	local result = dbPoll( qh, 0 )
+	if result and result[1] then
+		local id = result[1]["id"] 
+		
+		dbExec( handler, "UPDATE weed SET recieved = '1' WHERE id = '"..id.."'" )
+		
+		id = tonumber ( id )
+		
+		addWeed ( id, x, y, z, time, name )
+		
+		outputLog ( getPlayerName ( player ).." hat an "..x.."|"..y.."|"..z.." Drogen angebaut.", "weed" )
+		outputChatBox ( "Hanf wird angepflanzt! Du kannst es per Klick ernten, wann du willst, jedoch steigt der Ertrag pro Stunde auf max. 50 Gramm!", player, 0, 150, 0 )
+	end
+end
+
 function grow_func ( player, cmd, planttype )
 
 	if planttype == "weed" then
@@ -127,17 +146,9 @@ function grow_func ( player, cmd, planttype )
 						y = math.floor ( y * 10000 ) / 10000
 						z = math.floor ( z * 10000 ) / 10000
 						
-						mysql_vio_query ( "INSERT INTO weed ( x, y, z, time, name ) VALUES ( '"..x.."', '"..y.."', '"..( z + playerToGroundLevel - 0.5 ).."', '"..time.."', '"..name.."' )" )
+						dbExec( handler, "INSERT INTO weed ( x, y, z, time, name ) VALUES ( '"..x.."', '"..y.."', '"..( z + playerToGroundLevel - 0.5 ).."', '"..time.."', ? )", name )
 						
-						local id = MySQL_GetString ( "weed", "id", "recieved = '0'" )
-						mysql_vio_query ( "UPDATE weed SET recieved = '1' WHERE id = '"..id.."'" )
-						
-						id = tonumber ( id )
-						
-						addWeed ( id, x, y, z, time, name )
-						
-						outputLog ( getPlayerName ( player ).." hat an "..x.."|"..y.."|"..z.." Drogen angebaut.", "weed" )
-						outputChatBox ( "Hanf wird angepflanzt! Du kannst es per Klick ernten, wann du willst, jedoch steigt der Ertrag pro Stunde auf max. 50 Gramm!", player, 0, 150, 0 )
+						dbQuery( grow_func_DB, { x, y, z, time, name, player }, handler, "SELECT id FROM weed WHERE recieved = '0'" )
 					else
 						infobox ( player, "Hier kannst du nicht\nanbauen!", 5000, 125, 0, 0 )
 					end

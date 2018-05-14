@@ -49,7 +49,6 @@ addCommandHandler ( "leavegang", leavegang_func )
 
 function guninvite_func ( player, cmd, name )
 
-	name = MySQL_Save ( name )
 	uninvitedPlayer = getPlayerFromName ( name )
 	if uninvitedPlayer then
 		if isInGang ( uninvitedPlayer, getPlayerGang ( player ) ) then
@@ -134,6 +133,24 @@ function ggiverank_func ( player, cmd, name, rank )
 	end
 end
 addCommandHandler ( "ganggiverank", ggiverank_func )
+
+
+local function useSkin_DB ( qh, player, id )
+	local result = dbPoll( qh, 0 )
+	if result and result[1] then
+		local skin = tonumber( result[1]["Skin"] )
+		vioSetElementData ( player, "skinid", skin )
+		setElementModel ( player, skin )
+		infobox ( player, "Skin angenommen!", 5000, 0, 125, 0 )
+	end
+end
+
+local function equip_DB ( qh, player ) 
+	local result = dbPoll( qh, 0 )
+	if result and result[1] then
+		giveWeapon ( player, tonumber( result[1]["Waffe"] ), 1, true )
+	end
+end
 
 function gangLeaderChangeRecieve_func ( field, v1, v2, v3 )
 
@@ -221,7 +238,6 @@ function gangLeaderChangeRecieve_func ( field, v1, v2, v3 )
 		end
 	elseif field == "renameGang" then
 		if isFounderOfGang ( player ) then
-			v1 = MySQL_Save ( v1 )
 			if getGangFromName ( v1 ) then
 				infobox ( player, "Diese Name ist\nbereits vergeben!", 5000, 125, 0, 0 )
 			else
@@ -241,7 +257,7 @@ function gangLeaderChangeRecieve_func ( field, v1, v2, v3 )
 		v2 = math.abs ( math.floor ( tonumber ( v2 ) ) )
 		if v2 >= 1 and v2 <= 3 then
 			if v1 ~= getPlayerName ( client ) then
-				setPlayerGangRank ( MySQL_Save ( v1 ), v2 )
+				setPlayerGangRank ( v1, v2 )
 				infobox ( player, "Rang gesetzt.", 5000, 125, 0, 0 )
 			else
 				infobox ( player, "Du darfst dir\nnicht selbst einen\Rang setzen!", 5000, 125, 0, 0 )
@@ -267,7 +283,6 @@ function gangLeaderChangeRecieve_func ( field, v1, v2, v3 )
 		end
 	elseif field == "pinboard" then
 		if v1 then
-			v1 = MySQL_Save ( v1 )
 			if getPlayerGangRank ( player, id ) >= 3 then
 				setGangMSG ( id, v1 )
 			else
@@ -275,12 +290,7 @@ function gangLeaderChangeRecieve_func ( field, v1, v2, v3 )
 			end
 		end
 	elseif field == "useSkin" then
-		local skin = tonumber ( MySQL_GetString ( "gang_basic", "Skin", "HausID LIKE '"..id.."'" ) )
-		if skin then
-			vioSetElementData ( player, "skinid", skin )
-			setElementModel ( player, skin )
-			infobox ( player, "Skin angenommen!", 5000, 0, 125, 0 )
-		end
+		dbQuery( useSkin_DB, { player, id }, handler, "SELECT Skin FROM gang_basic WHERE HausID LIKE ?", id )
 	elseif field == "setSkin" then
 		if getPlayerGangRank ( player ) >= 3 then
 			local skin = getElementModel ( player )
@@ -299,7 +309,7 @@ function gangLeaderChangeRecieve_func ( field, v1, v2, v3 )
 			infobox ( player, "Du hast dich\nausgeruestet!", 5000, 0, 125, 0 )
 			setPedArmor ( player, 50 )
 			setElementHealth ( player, 100 )
-			giveWeapon ( player, tonumber ( MySQL_GetString ( "gang_basic", "Waffe", "HausID LIKE '"..id.."'" ) ), 1, true )
+			dbQuery( equip_DB, { player }, handler, "SELECT Waffe FROM gang_basic WHERE HausID LIKE ?", id )
 		else
 			infobox ( player, "Du hast nicht\ngenug Geld!", 5000, 125, 0, 0 )
 		end
@@ -314,6 +324,7 @@ function gangLeaderChangeRecieve_func ( field, v1, v2, v3 )
 end
 addEvent ( "gangLeaderChangeRecieve", true )
 addEventHandler ( "gangLeaderChangeRecieve", getRootElement(), gangLeaderChangeRecieve_func )
+
 
 function openClientGangWindow ( player )
 

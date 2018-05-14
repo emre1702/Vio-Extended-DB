@@ -5,35 +5,112 @@ setElementVisibleTo ( BikerDeliverBlip, getRootElement(), false )
 BikerGunshopEnter = createMarker ( 2560.8564453125, 1561.583984375, 10.8203125, "corona", 1, 0, 125, 0, getRootElement() )
 Biker = "Biker"
 function ddasettings ()
+	local mafia = "Biker"
 
-	BikerFamkasse = tonumber(MySQL_GetString("fraktionen", "DepotGeld", "Name LIKE '" ..Biker.."'"))
-	
-	BikerSchlagringe = tonumber(MySQL_GetString("fraktionswaffen", "Schlagringe", "Fraktion LIKE '" ..Biker.."'"))
-	BikerBaseballschlaeger = tonumber(MySQL_GetString("fraktionswaffen", "Baseballschlaeger", "Fraktion LIKE '" ..Biker.."'"))
-	BikerMesser = tonumber(MySQL_GetString("fraktionswaffen", "Messer", "Fraktion LIKE '" ..Biker.."'"))
-	BikerSchaufeln = tonumber(MySQL_GetString("fraktionswaffen", "Schaufeln", "Fraktion LIKE '" ..Biker.."'"))
-	BikerPistolen = tonumber(MySQL_GetString("fraktionswaffen", "Pistolen", "Fraktion LIKE '" ..Biker.."'"))
-	BikerSDPistolen = tonumber(MySQL_GetString("fraktionswaffen", "SDPistolen", "Fraktion LIKE '" ..Biker.."'"))
-	BikerPistolenMagazine = tonumber(MySQL_GetString("fraktionswaffen", "PistolenMagazine", "Fraktion LIKE '" ..Biker.."'"))
-	BikerDesertEagles = tonumber(MySQL_GetString("fraktionswaffen", "DesertEagles", "Fraktion LIKE '" ..Biker.."'"))
-	BikerDesertEagleMunition = tonumber(MySQL_GetString("fraktionswaffen", "DesertEagleMunition", "Fraktion LIKE '" ..Biker.."'"))
-	BikerSchrotflinten = tonumber(MySQL_GetString("fraktionswaffen", "Schrotflinten", "Fraktion LIKE '" ..Biker.."'"))
-	BikerSchrotflintenMunition = tonumber(MySQL_GetString("fraktionswaffen", "SchrotflintenMunition", "Fraktion LIKE '" ..Biker.."'"))
-	BikerMP = tonumber(MySQL_GetString("fraktionswaffen", "MP", "Fraktion LIKE '" ..Biker.."'"))
-	BikerMPMunition = tonumber(MySQL_GetString("fraktionswaffen", "MPMunition", "Fraktion LIKE '" ..Biker.."'"))
-	BikerAK = tonumber(MySQL_GetString("fraktionswaffen", "AK", "Fraktion LIKE '" ..Biker.."'"))
-	BikerAKMunition = tonumber(MySQL_GetString("fraktionswaffen", "AKMunition", "Fraktion LIKE '" ..Biker.."'"))
-	BikerM = tonumber(MySQL_GetString("fraktionswaffen", "M", "Fraktion LIKE '" ..Biker.."'"))
-	BikerMMunition = tonumber(MySQL_GetString("fraktionswaffen", "MMunition", "Fraktion LIKE '" ..Biker.."'"))
-	BikerGewehre = tonumber(MySQL_GetString("fraktionswaffen", "Gewehre", "Fraktion LIKE '" ..Biker.."'"))
-	BikerGewehrPatronen = tonumber(MySQL_GetString("fraktionswaffen", "GewehrPatronen", "Fraktion LIKE '" ..Biker.."'"))
-	BikerSGewehr = tonumber(MySQL_GetString("fraktionswaffen", "SGewehr", "Fraktion LIKE '" ..Biker.."'"))
-	BikerSGewehrMunition = tonumber(MySQL_GetString("fraktionswaffen", "SGewehrMunition", "Fraktion LIKE '" ..Biker.."'"))
-	BikerRaketenwerfer = tonumber(MySQL_GetString("fraktionswaffen", "Raketenwerfer", "Fraktion LIKE '" ..Biker.."'"))
-	BikerRaketen = tonumber(MySQL_GetString("fraktionswaffen", "Raketen", "Fraktion LIKE '" ..Biker.."'"))
-	BikerSpezwaffen = tonumber(MySQL_GetString("fraktionswaffen", "Spezwaffen", "Fraktion LIKE '" ..Biker.."'"))
+	local result = dbPoll( dbQuery( handler, "SELECT * FROM fraktionswaffen WHERE Fraktion LIKE ?", mafia ), -1 )
+	if result and result[1] then
+		local d = result[1]
+		BikerSchlagringe = tonumber( d["Schlagringe"] )
+		BikerBaseballschlaeger = tonumber( d["Baseballschlaeger"] )
+		BikerMesser = tonumber( d["Messer"] )
+		BikerSchaufeln = tonumber( d["Schaufeln"] )
+		BikerPistolen = tonumber( d["Pistolen"] )
+		BikerSDPistolen = tonumber( d["SDPistolen"] )
+		BikerPistolenMagazine = tonumber( d["PistolenMagazine"]  )
+		BikerDesertEagles = tonumber( d["DesertEagles"]  )
+		BikerDesertEagleMunition = tonumber( d["DesertEagleMunition"]  )
+		BikerSchrotflinten = tonumber( d["Schrotflinten"]  )
+		BikerSchrotflintenMunition = tonumber( d["SchrotflintenMunition"]  )
+		BikerMP = tonumber( d["MP"]  )
+		BikerMPMunition = tonumber( d["MPMunition"]  )
+		BikerAK = tonumber( d["AK"] ) 
+		BikerAKMunition = tonumber( d["AKMunition"] )
+		BikerM = tonumber( d["M"] ) 
+		BikerMMunition = tonumber( d["MMunition"] ) 
+		BikerGewehre = tonumber( d["Gewehre"] ) 
+		BikerGewehrPatronen = tonumber( d["GewehrPatronen"] ) 
+		BikerSGewehr = tonumber( d["SGewehr"]  )
+		BikerSGewehrMunition = tonumber( d["SGewehrMunition"]  )
+		BikerRaketenwerfer = tonumber( d["Raketenwerfer"]  )
+		BikerRaketen = tonumber( d["Raketen"]  )
+		BikerSpezwaffen = tonumber( d["Spezwaffen"]  )
+	end
+
+	result = dbPoll( dbQuery( handler, "SELECT DepotGeld FROM fraktionen WHERE Name LIKE ?", mafia ), -1 )
+	if result and result[1] then
+		BikerFamkasse = tonumber( d["DepotGeld"] )
+	end
 end
 addEventHandler("onResourceStart", getResourceRootElement(getThisResource()), ddasettings )
+
+local function BikerDeliver_func_DB2 ( qh, veh ) 
+	local result = dbPoll( qh, 0 )
+	if result and result[1] then
+		local d = result[1]
+		BikerFamkasse = tonumber( d["DepotGeld"] ) - vioGetElementData ( veh, "costs" )
+		dbExec( handler, "UPDATE fraktionen SET DepotGeld = ? WHERE Name LIKE 'Biker'", BikerFamkasse )
+	end
+end
+
+local function BikerDeliver_func_DB1 ( qh, player, dim, veh ) 
+	local result = dbPoll( qh, 0 )
+	if result and result[1] then
+		local d = result[1]
+		BikerSchlagringe = d["Schlagringe"] + vioGetElementData( veh, "schlagringe" )
+		BikerBaseballschlaeger = d["Baseballschlaeger"] + vioGetElementData( veh, "baseball" )
+		BikerMesser = d["Messer"] + vioGetElementData( veh, "knife" )
+		BikerSchaufeln = d["Schaufeln"] + vioGetElementData( veh, "shovels" )
+		BikerPistolen = d["Pistolen"] + vioGetElementData( veh, "pistol" )
+		BikerSDPistolen = d["SDPistolen"] + vioGetElementData( veh, "sdpistol" )
+		BikerPistolenMagazine = d["PistolenMagazine"] + vioGetElementData( veh, "pistolammo" )
+		BikerDesertEagles = d["DesertEagles"] + vioGetElementData( veh, "eagle" )
+		BikerDesertEagleMunition = d["DesertEagleMunition"] + vioGetElementData( veh, "eagleammo" )
+		BikerSchrotflinten = d["Schrotflinten"] + vioGetElementData( veh, "shotgun" )
+		BikerSchrotflintenMunition = d["SchrotflintenMunition"] + vioGetElementData( veh, "shotgunammo" )
+		BikerMP = d["MP"] + vioGetElementData( veh, "mp" )
+		BikerMPMunition = d["MPMunition"] + vioGetElementData( veh, "mpammo" )
+		BikerAK = d["AK"] + vioGetElementData( veh, "ak" )
+		BikerAKMunition = d["AKMunition"] + vioGetElementData( veh, "akammo" )
+		BikerM = d["M"] + vioGetElementData( veh, "m" )
+		BikerMMunition = d["MMunition"] + vioGetElementData( veh, "mammo" )
+		BikerGewehre = d["Gewehre"] + vioGetElementData( veh, "gewehr" )
+		BikerGewehrPatronen = d["GewehrPatronen"] + vioGetElementData( veh, "gewehrammo" )
+		BikerSGewehr = d["SGewehr"] + vioGetElementData( veh, "sgewehr" )
+		BikerSGewehrMunition = d["SGewehrMunition"] + vioGetElementData( veh, "sgewehrammo" )
+		BikerRaketenwerfer = d["Raketenwerfer"] + vioGetElementData( veh, "rakwerfer" )
+		BikerRaketen = d["Raketen"] + vioGetElementData( veh, "rak" )
+		BikerSpezwaffen = d["Spezwaffen"] + vioGetElementData( veh, "spezgun" )
+		
+		local querystr = dbPrepareString( handler, "UPDATE fraktionswaffen SET Schlagringe = ?, ", BikerSchlagringe )
+		querystr = querystr .. dbPrepareString( handler, "Baseballschlaeger = ?, ", BikerBaseballschlaeger )
+		querystr = querystr .. dbPrepareString( handler, "Messer = ?, ", BikerMesser )
+		querystr = querystr .. dbPrepareString( handler, "Schaufeln = ?, ", BikerSchaufeln )
+		querystr = querystr .. dbPrepareString( handler, "Pistolen = ?, ", BikerPistolen )
+		querystr = querystr .. dbPrepareString( handler, "SDPistolen = ?, ", BikerSDPistolen )
+		querystr = querystr .. dbPrepareString( handler, "PistolenMagazine = ?, ", BikerPistolenMagazine )
+		querystr = querystr .. dbPrepareString( handler, "DesertEagles = ?, ", BikerDesertEagles )
+		querystr = querystr .. dbPrepareString( handler, "DesertEagleMunition = ?, ", BikerDesertEagleMunition )
+		querystr = querystr .. dbPrepareString( handler, "Schrotflinten = ?, ", BikerSchrotflinten )
+		querystr = querystr .. dbPrepareString( handler, "SchrotflintenMunition = ?, ", BikerSchrotflintenMunition )
+		querystr = querystr .. dbPrepareString( handler, "MP = ?, ", BikerMP )
+		querystr = querystr .. dbPrepareString( handler, "MPMunition = ?, ", BikerMPMunition )
+		querystr = querystr .. dbPrepareString( handler, "AK = ?, ", BikerAK )
+		querystr = querystr .. dbPrepareString( handler, "M = ?, ", BikerM )
+		querystr = querystr .. dbPrepareString( handler, "MMunition = ?, ", BikerMMunition )
+		querystr = querystr .. dbPrepareString( handler, "Gewehre = ?, ", BikerGewehre )
+		querystr = querystr .. dbPrepareString( handler, "GewehrPatronen = ?, ", BikerGewehrPatronen )
+		querystr = querystr .. dbPrepareString( handler, "SGewehr = ?, ", BikerSGewehr )
+		querystr = querystr .. dbPrepareString( handler, "SgewehrMunition = ?, ", BikerSGewehrMunition )
+		querystr = querystr .. dbPrepareString( handler, "Raketenwerfer = ?, ", BikerRaketenwerfer )
+		querystr = querystr .. dbPrepareString( handler, "Raketen = ?, ", BikerRaketen )
+		querystr = querystr .. dbPrepareString( handler, "Spezwaffen = ? ", BikerSpezwaffen )
+		querystr = querystr .. dbPrepareString( handler, "WHERE Fraktion LIKE 'Biker'" )
+		dbExec( handler, querystr )
+
+		dbQuery( BikerDeliver_func_DB2, { veh }, handler, "SELECT DepotGeld FROM fraktionen WHERE Name LIKE 'Biker'" )
+	end
+end
+
 
 function BikerDeliver_func ( player, dim )
    
@@ -45,84 +122,8 @@ function BikerDeliver_func ( player, dim )
 				
 					mafiatransport = 0
 					
-					BikerSchlagringe = MySQL_GetString("fraktionswaffen", "Schlagringe", "Fraktion LIKE 'Biker'")
-					BikerBaseballschlaeger = MySQL_GetString("fraktionswaffen", "Baseballschlaeger", "Fraktion LIKE 'Biker'")
-					BikerMesser = MySQL_GetString("fraktionswaffen", "Messer", "Fraktion LIKE 'Biker'")
-					BikerSchaufeln = MySQL_GetString("fraktionswaffen", "Schaufeln", "Fraktion LIKE 'Biker'")
-					BikerPistolen = MySQL_GetString("fraktionswaffen", "Pistolen", "Fraktion LIKE 'Biker'")
-					BikerSDPistolen = MySQL_GetString("fraktionswaffen", "SDPistolen", "Fraktion LIKE 'Biker'")
-					BikerPistolenMagazine = MySQL_GetString("fraktionswaffen", "PistolenMagazine", "Fraktion LIKE 'Biker'")
-					BikerDesertEagles = MySQL_GetString("fraktionswaffen", "DesertEagles", "Fraktion LIKE 'Biker'")
-					BikerDesertEagleMunition = MySQL_GetString("fraktionswaffen", "DesertEagleMunition", "Fraktion LIKE 'Biker'")
-					BikerSchrotflinten = MySQL_GetString("fraktionswaffen", "Schrotflinten", "Fraktion LIKE 'Biker'")
-					BikerSchrotflintenMunition = MySQL_GetString("fraktionswaffen", "SchrotflintenMunition", "Fraktion LIKE 'Biker'")
-					BikerMP = MySQL_GetString("fraktionswaffen", "MP", "Fraktion LIKE 'Biker'")
-					BikerMPMunition = MySQL_GetString("fraktionswaffen", "MPMunition", "Fraktion LIKE 'Biker'")
-					BikerAK = MySQL_GetString("fraktionswaffen", "AK", "Fraktion LIKE 'Biker'")
-					BikerAKMunition = MySQL_GetString("fraktionswaffen", "AKMunition", "Fraktion LIKE 'Biker'")
-					BikerM = MySQL_GetString("fraktionswaffen", "M", "Fraktion LIKE 'Biker'")
-					BikerMMunition = MySQL_GetString("fraktionswaffen", "MMunition", "Fraktion LIKE 'Biker'")
-					BikerGewehre = MySQL_GetString("fraktionswaffen", "Gewehre", "Fraktion LIKE 'Biker'")
-					BikerGewehrPatronen = MySQL_GetString("fraktionswaffen", "GewehrPatronen", "Fraktion LIKE 'Biker'")
-					BikerSGewehr = MySQL_GetString("fraktionswaffen", "SGewehr", "Fraktion LIKE 'Biker'")
-					BikerSGewehrMunition = MySQL_GetString("fraktionswaffen", "SGewehrMunition", "Fraktion LIKE 'Biker'")
-					BikerRaketenwerfer = MySQL_GetString("fraktionswaffen", "Raketenwerfer", "Fraktion LIKE 'Biker'")
-					BikerRaketen = MySQL_GetString("fraktionswaffen", "Raketen", "Fraktion LIKE 'Biker'")
-					BikerSpezwaffen = MySQL_GetString("fraktionswaffen", "Spezwaffen", "Fraktion LIKE 'Biker'")
-					BikerFamkasse = tonumber(MySQL_GetString("fraktionen", "DepotGeld", "Name LIKE 'Biker'"))
-					
-					MySQL_SetString("fraktionswaffen", "Schlagringe", vioGetElementData ( veh, "schlagringe" )+BikerSchlagringe, "Fraktion LIKE 'Biker'")
-					MySQL_SetString("fraktionswaffen", "Baseballschlaeger", vioGetElementData ( veh, "baseball" )+BikerBaseballschlaeger, "Fraktion LIKE 'Biker'")
-					MySQL_SetString("fraktionswaffen", "Messer", vioGetElementData ( veh, "knife" )+BikerMesser, "Fraktion LIKE 'Biker'")
-					MySQL_SetString("fraktionswaffen", "Schaufeln", vioGetElementData ( veh, "shovels" )+BikerSchaufeln, "Fraktion LIKE 'Biker'")
-					MySQL_SetString("fraktionswaffen", "Pistolen", vioGetElementData ( veh, "pistol" )+BikerPistolen, "Fraktion LIKE 'Biker'")
-					MySQL_SetString("fraktionswaffen", "SDPistolen", vioGetElementData ( veh, "sdpistol" )+BikerSDPistolen, "Fraktion LIKE 'Biker'")
-					MySQL_SetString("fraktionswaffen", "PistolenMagazine", vioGetElementData ( veh, "pistolammo" )+BikerPistolenMagazine, "Fraktion LIKE 'Biker'")
-					MySQL_SetString("fraktionswaffen", "DesertEagles", vioGetElementData ( veh, "eagle" )+BikerDesertEagles, "Fraktion LIKE 'Biker'")
-					MySQL_SetString("fraktionswaffen", "DesertEagleMunition", vioGetElementData ( veh, "eagleammo" )+BikerDesertEagleMunition, "Fraktion LIKE 'Biker'")
-					MySQL_SetString("fraktionswaffen", "Schrotflinten", vioGetElementData ( veh, "shotgun" )+BikerSchrotflinten, "Fraktion LIKE 'Biker'")
-					MySQL_SetString("fraktionswaffen", "SchrotflintenMunition", vioGetElementData ( veh, "shotgunammo" )+BikerSchrotflintenMunition, "Fraktion LIKE 'Biker'")
-					MySQL_SetString("fraktionswaffen", "MP", vioGetElementData ( veh, "mp" )+BikerMP, "Fraktion LIKE 'Biker'")
-					MySQL_SetString("fraktionswaffen", "MPMunition", vioGetElementData ( veh, "mpammo" )+BikerMPMunition, "Fraktion LIKE 'Biker'")
-					MySQL_SetString("fraktionswaffen", "AK", vioGetElementData ( veh, "ak" )+BikerAK, "Fraktion LIKE 'Biker'")
-					MySQL_SetString("fraktionswaffen", "AKMunition", vioGetElementData ( veh, "akammo" )+BikerAKMunition, "Fraktion LIKE 'Biker'")
-					MySQL_SetString("fraktionswaffen", "M", vioGetElementData ( veh, "m" )+BikerM, "Fraktion LIKE 'Biker'")
-					MySQL_SetString("fraktionswaffen", "MMunition", vioGetElementData ( veh, "mammo" )+BikerMMunition, "Fraktion LIKE 'Biker'")
-					MySQL_SetString("fraktionswaffen", "Gewehre", vioGetElementData ( veh, "gewehr" )+BikerGewehre, "Fraktion LIKE 'Biker'")
-					MySQL_SetString("fraktionswaffen", "GewehrPatronen", vioGetElementData ( veh, "gewehrammo" )+BikerGewehrPatronen, "Fraktion LIKE 'Biker'")
-					MySQL_SetString("fraktionswaffen", "SGewehr", vioGetElementData ( veh, "sgewehr" )+BikerSGewehr, "Fraktion LIKE 'Biker'")
-					MySQL_SetString("fraktionswaffen", "SgewehrMunition", vioGetElementData ( veh, "sgewehrammo" )+BikerSGewehrMunition, "Fraktion LIKE 'Biker'")
-					MySQL_SetString("fraktionswaffen", "Raketenwerfer", vioGetElementData ( veh, "rakwerfer" )+BikerRaketenwerfer, "Fraktion LIKE 'Biker'")
-					MySQL_SetString("fraktionswaffen", "Raketen", vioGetElementData ( veh, "rak" )+BikerRaketen, "Fraktion LIKE 'Biker'")
-					MySQL_SetString("fraktionswaffen", "Spezwaffen", vioGetElementData ( veh, "spezgun" )+BikerSpezwaffen, "Fraktion LIKE 'Biker'")
-					
-					BikerSchlagringe = MySQL_GetString("fraktionswaffen", "Schlagringe", "Fraktion LIKE 'Biker'")
-					BikerBaseballschlaeger = MySQL_GetString("fraktionswaffen", "Baseballschlaeger", "Fraktion LIKE 'Biker'")
-					BikerMesser = MySQL_GetString("fraktionswaffen", "Messer", "Fraktion LIKE 'Biker'")
-					BikerSchaufeln = MySQL_GetString("fraktionswaffen", "Schaufeln", "Fraktion LIKE 'Biker'")
-					BikerPistolen = MySQL_GetString("fraktionswaffen", "Pistolen", "Fraktion LIKE 'Biker'")
-					BikerSDPistolen = MySQL_GetString("fraktionswaffen", "SDPistolen", "Fraktion LIKE 'Biker'")
-					BikerPistolenMagazine = MySQL_GetString("fraktionswaffen", "PistolenMagazine", "Fraktion LIKE 'Biker'")
-					BikerDesertEagles = MySQL_GetString("fraktionswaffen", "DesertEagles", "Fraktion LIKE 'Biker'")
-					BikerDesertEagleMunition = MySQL_GetString("fraktionswaffen", "DesertEagleMunition", "Fraktion LIKE 'Biker'")
-					BikerSchrotflinten = MySQL_GetString("fraktionswaffen", "Schrotflinten", "Fraktion LIKE 'Biker'")
-					BikerSchrotflintenMunition = MySQL_GetString("fraktionswaffen", "SchrotflintenMunition", "Fraktion LIKE 'Biker'")
-					BikerMP = MySQL_GetString("fraktionswaffen", "MP", "Fraktion LIKE 'Biker'")
-					BikerMPMunition = MySQL_GetString("fraktionswaffen", "MPMunition", "Fraktion LIKE 'Biker'")
-					BikerAK = MySQL_GetString("fraktionswaffen", "AK", "Fraktion LIKE 'Biker'")
-					BikerAKMunition = MySQL_GetString("fraktionswaffen", "AKMunition", "Fraktion LIKE 'Biker'")
-					BikerM = MySQL_GetString("fraktionswaffen", "M", "Fraktion LIKE 'Biker'")
-					BikerMMunition = MySQL_GetString("fraktionswaffen", "MMunition", "Fraktion LIKE 'Biker'")
-					BikerGewehre = MySQL_GetString("fraktionswaffen", "Gewehre", "Fraktion LIKE 'Biker'")
-					BikerGewehrPatronen = MySQL_GetString("fraktionswaffen", "GewehrPatronen", "Fraktion LIKE 'Biker'")
-					BikerSGewehr = MySQL_GetString("fraktionswaffen", "SGewehr", "Fraktion LIKE 'Biker'")
-					BikerSGewehrMunition = MySQL_GetString("fraktionswaffen", "SGewehrMunition", "Fraktion LIKE 'Biker'")
-					BikerRaketenwerfer = MySQL_GetString("fraktionswaffen", "Raketenwerfer", "Fraktion LIKE 'Biker'")
-					BikerRaketen = MySQL_GetString("fraktionswaffen", "Raketen", "Fraktion LIKE 'Biker'")
-					BikerSpezwaffen = MySQL_GetString("fraktionswaffen", "Spezwaffen", "Fraktion LIKE 'Biker'")
-					BikerFamkasse = BikerFamkasse - tonumber(vioGetElementData( veh, "costs" ))
+					dbQuery( BikerDeliver_func_DB1, { player, dim, veh }, handler, "SELECT * FROM fraktionswaffen WHERE Fraktion LIKE 'Biker'" )
 
-					MySQL_SetString("fraktionen", "DepotGeld", BikerFamkasse, "Name LIKE 'Biker'")
 					outputChatBox ( "Lieferung abgegeben - Du erhaelst "..vioGetElementData ( veh, "costs" ).." $ aus der Familienkasse! zurueck!", player, 0, 125, 0 )
 					vioSetElementData ( player, "money", vioGetElementData ( player, "money" ) + vioGetElementData ( veh, "costs" ) )
 					givePlayerMoney ( player, vioGetElementData ( veh, "costs" ) )
@@ -132,7 +133,7 @@ function BikerDeliver_func ( player, dim )
 							vioSetElementData ( player, "gunloads", "done" )																									-- Achiev: Waffenschieber
 							triggerClientEvent ( player, "showAchievmentBox", player, "Waffenschieber", 50, 10000 )															-- Achiev: Waffenschieber
 							vioSetElementData ( player, "bonuspoints", tonumber(vioGetElementData ( player, "bonuspoints" )) + 50 )												-- Achiev: Waffenschieber
-							MySQL_SetString("achievments", "Waffenschieber", vioGetElementData ( player, "gunloads" ), "Name LIKE '"..getPlayerName(player).."'")				-- Achiev: Waffenschieber
+							dbExec( handler, "UPDATE achievments SET Waffenschieber=? WHERE Name LIKE ?", vioGetElementData ( player, "gunloads" ), getPlayerName(player) )				-- Achiev: Waffenschieber
 						end																																					-- Achiev: Waffenschieber
 					end																																						-- Achiev: Waffenschieber
 					triggerClientEvent ( player, "HudEinblendenMoney", getRootElement() )
@@ -169,11 +170,11 @@ addEventHandler ( "onMarkerHit", BikerGunshopEnter, BikerGunshopEnter_func )
 addEvent( "onBikershopMenuTest", true )
 addEventHandler( "onBikershopMenuTest", getRootElement(), BikerGunshopEnter_func )
 
-function gunbuyBiker_func ( player, itemtype, item,  w0, w1, w2, w3, w4, w5, w6, w7 )
 
-	local success = 0
-	if player == client then
-		BikerFamkasse = tonumber(MySQL_GetString("fraktionen", "DepotGeld", "Name LIKE '" ..Biker.."'"))
+local function gunbuyBiker_func_DB ( qh, player, itemtype, item, w0, w1, w2, w3, w4, w5, w6, w7 ) 
+	local result = dbPoll( qh, 0 )
+	if result and result[1] then
+		BikerFamkasse = result[1]["DepotGeld"]
 		if itemtype == "armor" then
 			if vioGetElementData ( player, "money" ) >= armor_price then
 				vioSetElementData ( player, "money", vioGetElementData ( player, "money" ) - armor_price )
@@ -787,7 +788,15 @@ function gunbuyBiker_func ( player, itemtype, item,  w0, w1, w2, w3, w4, w5, w6,
 		if success == 1 then 
 			playSoundFrontEnd ( player, 40 )
 		end
-		MySQL_SetString("fraktionen", "DepotGeld", BikerFamkasse, "Name LIKE 'Biker'")
+		dbExec( handler, "UPDATE fraktionen SET DepotGeld=? WHERE Name LIKE 'Biker'", BikerFamkasse )
+	end
+end
+
+function gunbuyBiker_func ( player, itemtype, item,  w0, w1, w2, w3, w4, w5, w6, w7 )
+
+	local success = 0
+	if player == client then
+		dbQuery( gunbuyBiker_func_DB, { player, itemtype, w0, w1, w2, w3, w4, w5, w6, w7 }, handler, "SELECT DepotGeld FROM fraktionen WHERE Name LIKE 'Biker'" )
 	end
 end
 addEvent ( "gunbuyBiker", true )

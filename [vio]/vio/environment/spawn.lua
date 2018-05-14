@@ -8,24 +8,20 @@ function RemoteSpawnPlayer ( player )
 		showPlayerHudComponent ( player, "radar", true )
 		if vioGetElementData ( player, "spawnpos_x" ) == "wohnmobil" then
 			local spawned = false
-			for i = 1, 10 do
+			local result = dbPoll( dbQuery( handler, "SELECT Slot FROM vehicles WHERE Besitzer LIKE ? AND Typ = ?", pname, 508 ), -1 )  
+			if result and result[1] then
+				local i = tonumber( result[1]["Slot"] )
 				local veh = _G[getPrivVehString ( pname, i )]
 				if veh then
-					local model = tonumber ( MySQL_GetString("vehicles", "Typ", "Slot LIKE '"..i.."' AND Besitzer LIKE '"..pname.."'") )
-					if model then
-						if model == 508 then
-							sx, sy, sz = getElementPosition ( veh )
-							--if vioGetElementData ( player, "spawnpos_x" ) == "tropic" then
-								savespawn ( player, sx+4, sy+4, sz, 0, 0, 0 )
-								spawned = true
-							--elseif vioGetElementData ( player, "spawnpos_x" ) == "marquis" then
-							--	sx, sy, sz = getElementPosition ( _G["ObjYacht"..pname..i] )
-							--	savespawn ( player, sx, sy, sz+3, 0, 0, 0 )
-							--	spawned = true
-							--end
-							break
-						end
-					end
+					sx, sy, sz = getElementPosition ( veh )
+					--if vioGetElementData ( player, "spawnpos_x" ) == "tropic" then
+						savespawn ( player, sx+4, sy+4, sz, 0, 0, 0 )
+						spawned = true
+					--elseif vioGetElementData ( player, "spawnpos_x" ) == "marquis" then
+					--	sx, sy, sz = getElementPosition ( _G["ObjYacht"..pname..i] )
+					--	savespawn ( player, sx, sy, sz+3, 0, 0, 0 )
+					--	spawned = true
+					--end
 				end
 			end
 			if not spawned then
@@ -44,22 +40,26 @@ function RemoteSpawnPlayer ( player )
 			end
 		else
 			local spawned = false
-			for i = 1, 10 do
-				local veh = _G[getPrivVehString ( pname, i )]
-				if veh then
-					local model = tonumber ( MySQL_GetString("vehicles", "Typ", "Slot LIKE '"..i.."' AND Besitzer LIKE '"..pname.."'") )
-					if model then
-						if spawnBoats[model] then
-							sx, sy, sz = getElementPosition ( veh )
-							--if vioGetElementData ( player, "spawnpos_x" ) == "tropic" then
-								savespawn ( player, sx, sy, sz+3.8, 0, 0, 0 )
-								spawned = true
-							--elseif vioGetElementData ( player, "spawnpos_x" ) == "marquis" then
-							--	sx, sy, sz = getElementPosition ( _G["ObjYacht"..pname..i] )
-							--	savespawn ( player, sx, sy, sz+3, 0, 0, 0 )
-							--	spawned = true
-							--end
-							break
+			local result = dbPoll( dbQuery( handler, "SELECT Slot, Typ FROM vehicles WHERE Besitzer LIKE ?", pname, 508 ), -1 )  
+			if result and result[1] then
+				for i=1, #result do
+					local i = tonumber( result[i]["Slot"] )
+					local veh = _G[getPrivVehString ( pname, i )]
+					if veh then
+						local model = tonumber ( result[i]["Typ"] )
+						if model then
+							if spawnBoats[model] then
+								sx, sy, sz = getElementPosition ( veh )
+								--if vioGetElementData ( player, "spawnpos_x" ) == "tropic" then
+									savespawn ( player, sx, sy, sz+3.8, 0, 0, 0 )
+									spawned = true
+								--elseif vioGetElementData ( player, "spawnpos_x" ) == "marquis" then
+								--	sx, sy, sz = getElementPosition ( _G["ObjYacht"..pname..i] )
+								--	savespawn ( player, sx, sy, sz+3, 0, 0, 0 )
+								--	spawned = true
+								--end
+								break
+							end
 						end
 					end
 				end

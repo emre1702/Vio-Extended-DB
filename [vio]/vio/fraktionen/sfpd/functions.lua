@@ -16,7 +16,7 @@ function takegunlicense_func ( player, cmd, targetName )
 		if isElement ( target ) then
 			if vioGetElementData ( target, "gunlicense" ) > 0 then
 				vioSetElementData ( target, "gunlicense", 0 )
-				mysql_vio_query ( "UPDATE userdata SET Waffenschein = '0' WHERE Name LIKE '"..targetName.."'" )
+				dbExec( handler, "UPDATE userdata SET Waffenschein = '0' WHERE Name LIKE ?", targetName )
 				infobox ( player, "\n\nDu hast "..targetName.."\n seinen Waffenschein\nabgenommen.", 5000, 125, 0, 0 )
 				infobox ( target, "\n\n"..getPlayerName ( player ).." hat dir\ndeinen Waffenschein\nabgenommen.", 7500, 125, 0, 0 )
 			else
@@ -176,9 +176,8 @@ function accept_ticket_func ( player, cmd, after )
 					vioSetElementData ( player, "ticketprice", nil )
 					
 					infobox ( player, "\n\nDeine Strafe wurde\ndir erlassen.", 5000, 0, 200, 0 )
-					
-					local fmoney = tonumber ( MySQL_GetString("fraktionen", "DepotGeld", "ID LIKE '1'") )
-					MySQL_SetString("fraktionen", "DepotGeld", fmoney + price, "ID LIKE '1'")
+
+					dbExec( handler, "UPDATE fraktionen SET DepotGeld = DepotGeld + ? WHERE ID LIKE '1'", price )
 				else
 					infobox ( player, "\n\n\nDu hast keine\nWanteds!", 7500, 125, 0, 0 )
 				end
@@ -192,6 +191,21 @@ function accept_ticket_func ( player, cmd, after )
 end
 addCommandHandler ( "accept", accept_ticket_func )
 
+
+local function fdraw_func_DB( qh, player, amount ) 
+	local result = dbPoll( qh, 0 )
+	if result and result[1] then
+		local fmoney = result[1]["DepotGeld"]
+		if fmoney >= amount then
+			dbExec( handler, "UPDATE fraktionen SET DepotGeld = DepotGeld - ? WHERE ID LIKE '1'", amount )
+			givePlayerSaveMoney ( player, amount )
+			outputLog ( getPlayerName(player).." hat "..amount.." $ aus der Staatskasse genommen.", "fkasse" )
+		else
+			infobox ( player, "\n\nEs ist nicht mehr\ngenug Geld in der\nKasse!", 7500, 125, 0, 0 )
+		end
+	end
+end
+
 function fdraw_func ( player, cmd, amount )
 
 	if isOnDuty(player) then
@@ -199,14 +213,7 @@ function fdraw_func ( player, cmd, amount )
 			local amount = tonumber ( amount )
 			if amount then
 				amount = math.abs ( math.floor ( amount ) )
-				local fmoney = tonumber ( MySQL_GetString("fraktionen", "DepotGeld", "ID LIKE '1'") )
-				if fmoney >= amount then
-					MySQL_SetString("fraktionen", "DepotGeld", fmoney - amount, "ID LIKE '1'")
-					givePlayerSaveMoney ( player, amount )
-					outputLog ( getPlayerName(player).." hat "..amount.." $ aus der Staatskasse genommen.", "fkasse" )
-				else
-					infobox ( player, "\n\nEs ist nicht mehr\ngenug Geld in der\nKasse!", 7500, 125, 0, 0 )
-				end
+				dbQuery( fdraw_func_DB, { player, amount }, handler, "SELECT DepotGeld FROM fraktionen WHERE ID LIKE '1'" )
 			else
 				infobox ( player, "\n\n\nGebrauch: /fdraw [Summe]", 7500, 125, 0, 0 )
 			end
@@ -219,6 +226,21 @@ function fdraw_func ( player, cmd, amount )
 end
 addCommandHandler ( "fdraw", fdraw_func )
 
+
+local function fbank_func_DB( qh, player, amount ) 
+	local result = dbPoll( qh, 0 )
+	if result and result[1] then
+		local fmoney = result[1]["DepotGeld"]
+		if vioGetElementData ( player, "bankmoney" ) >= amount then
+			dbExec( handler, "UPDATE fraktionen SET DepotGeld = DepotGeld + ? WHERE ID LIKE '1'", amount )
+			vioSetElementData ( player, "money", vioGetElementData ( player, "money" ) - amount )
+			outputLog ( getPlayerName(player).." hat "..amount.." $ in die Staatskasse gezahlt.", "fkasse" )
+		else
+			infobox ( player, "\n\nDu hast nicht\nsoviel Geld!", 7500, 125, 0, 0 )
+		end
+	end
+end
+
 function fbank_func ( player, cmd, amount )
 
 	if isOnDuty(player) then
@@ -226,14 +248,7 @@ function fbank_func ( player, cmd, amount )
 			local amount = tonumber ( amount )
 			if amount then
 				amount = math.abs ( math.floor ( amount ) )
-				local fmoney = tonumber ( MySQL_GetString("fraktionen", "DepotGeld", "ID LIKE '1'") )
-				if vioGetElementData ( player, "bankmoney" ) >= amount then
-					MySQL_SetString("fraktionen", "DepotGeld", fmoney + amount, "ID LIKE '1'")
-					vioSetElementData ( player, "money", vioGetElementData ( player, "money" ) - amount )
-					outputLog ( getPlayerName(player).." hat "..amount.." $ in die Staatskasse gezahlt.", "fkasse" )
-				else
-					infobox ( player, "\n\nDu hast nicht\nsoviel Geld!", 7500, 125, 0, 0 )
-				end
+				dbQuery( fdraw_func_DB, { player, amount }, handler, "SELECT DepotGeld FROM fraktionen WHERE ID LIKE '1'" )
 			else
 				infobox ( player, "\n\n\nGebrauch: /fbank [Summe]", 7500, 125, 0, 0 )
 			end
@@ -701,37 +716,40 @@ addEvent ("takeweapons", true )
 addEventHandler ("takeweapons", getRootElement(), takeweapons_func )
 
 
-function getDatabaseFile ( name )
-
-	local player = client
-	local name = MySQL_Save ( name )
-	if MySQL_DatasetExist ( "players", "Name LIKE '"..name.."'" ) or MySQL_DatasetOldExist ( "players", "Name LIKE '"..name.."'" ) then
-		local data = MySQL_GetStringDataset ( "state_files", "text, editor, faction", "name LIKE '"..name.."'" )
-		if data then
-			triggerClientEvent ( player, "recieveDatabaseFile", player, name, data["text"], data["editor"], tonumber ( data[faction] ) )
-		else
-			triggerClientEvent ( player, "recieveDatabaseFile", player, name, "[Leerer Eintrag]", "", 0 )
-		end
+local function getDatabaseFile_DB ( qh, player, name ) 
+	local result = dbPoll( qh, 0 )
+	if result and result[1] then
+		local data = result[1]
+		triggerClientEvent ( player, "recieveDatabaseFile", player, name, data["text"] or "[Leerer Eintrag]", data["editor"] or "", tonumber ( data["faction"] ) or 0 )
 	else
 		infobox ( player, "Ungültiger Name!", 5000, 200, 0, 0 )
 	end
 end
+
+function getDatabaseFile ( name )
+	dbQuery( getDatabaseFile_DB, { client, name }, handler, "SELECT text, editor, faction FROM state_files WHERE name LIKE ?", name )
+end
 addEvent ( "getDatabaseFile", true )
 addEventHandler ( "getDatabaseFile", getRootElement (), getDatabaseFile )
 
-function saveDatabaseFile ( name, text )
 
+local function saveDatabaseFile_DB ( qh, player, name, text ) 
+	local result = dbPoll( qh, 0 )
+	if result and result[1] then
+		dbExec( handler, "DELETE FROM state_files WHERE name = ? LIMIT 1", name )
+		-- von Bonus:
+		-- würde hier gerne REPLACE INTO nutzen, aber dann könnte es Probleme geben, wenn der Primary Key NICHT name ist
+		dbExec( handler, "INSERT INTO state_files ( name, text, editor, faction ) VALUES ( ?, ?, ?, ? )", name, text, factionRankNames[vioGetElementData ( player, "fraktion" )][vioGetElementData ( player, "rang" )]..getPlayerName ( player ), vioGetElementData ( player, "fraktion" ) )
+		infobox ( player, "Akte gespeichert.", 5000, 0, 200, 0 )
+	else
+		infobox ( player, "Ungültiger Name!", 5000, 200, 0, 0 )
+	end
+end
+
+function saveDatabaseFile ( name, text )
 	local player = client
-	name = MySQL_Save ( name )
-	text = MySQL_Save ( text )
 	if #text <= 1000 then
-		if MySQL_DatasetExist ( "players", "Name LIKE '"..name.."'" ) or MySQL_DatasetOldExist ( "players", "Name LIKE '"..name.."'" ) then
-			mysql_vio_query ( "DELETE FROM state_files WHERE name = '"..name.."' LIMIT 1" )
-			mysql_vio_query ( "INSERT INTO state_files ( name, text, editor, faction ) VALUES ( '"..name.."', '"..text.."', '"..factionRankNames[vioGetElementData ( player, "fraktion" )][vioGetElementData ( player, "rang" )]..getPlayerName ( player ).."', '"..vioGetElementData ( player, "fraktion" ).."' )" )
-			infobox ( player, "Akte gespeichert.", 5000, 0, 200, 0 )
-		else
-			infobox ( player, "Ungültiger Name!", 5000, 200, 0, 0 )
-		end
+		dbQuery( saveDatabaseFile_DB, { client, name, text }, handler, "SELECT Name FROM players WHERE Name LIKE ?", name )
 	else
 		infobox ( player, "Der Text ist zu\nlang!", 5000, 200, 0, 0 )
 	end

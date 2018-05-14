@@ -3,7 +3,7 @@
 function mySQLBlocksCreate ()
 
 	highscoreCounter = highscoreCounter + 1
-	blocksData = mysql_fetch_assoc(result)
+	blocksData = table.remove( result, 1 )
 	if blocksData then
 		tetrisHighscores[highscoreCounter] = {}
 		
@@ -12,7 +12,6 @@ function mySQLBlocksCreate ()
 		
 		mySQLBlocksCreate ()
 	else
-		mysql_free_result(result)
 		outputDebugString("Es wurden "..(highscoreCounter-1).." Tetris-Highscores gefunden.")
 	end
 end
@@ -20,14 +19,13 @@ end
 function initTetrisHighscores ()
 
 	highscoreCounter = 0
-	result = mysql_query(handler, "SELECT * FROM blocks")
+	result, errorcode, errormsg = dbPoll( dbQuery ( handler, "SELECT * FROM blocks"), -1 )
 	if( not result) then
-		outputDebugString("Error executing the query: (" .. mysql_errno(handler) .. ") " .. mysql_error(handler))
+		outputDebugString("Error executing the query: (" .. errorcode .. ") " .. errormsg)
 	else
-		if(mysql_num_rows(result) > 0) then
+		if result[1] then
 			mySQLBlocksCreate ()
 		else
-			mysql_free_result(result)
 			outputServerLog("Es wurden keine Highscores")
 		end
 	end
@@ -101,9 +99,9 @@ end
 
 function rewriteHighscore ()
 
-	mysql_vio_query ( "TRUNCATE TABLE blocks" )
+	dbExec( handler, "TRUNCATE TABLE blocks" )
 	for i = 1, 10 do
-		mysql_vio_query ( "INSERT INTO blocks (Name, Punkte) VALUES ('"..tetrisHighscores[i]["name"].."', '"..tetrisHighscores[i]["points"].."')" )
+		dbExec( handler, "INSERT INTO blocks (Name, Punkte) VALUES (?, ?)", tetrisHighscores[i]["name"], tetrisHighscores[i]["points"] )
 	end
 end
 

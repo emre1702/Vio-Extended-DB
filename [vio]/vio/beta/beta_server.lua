@@ -25,6 +25,29 @@ function isThisTheBetaServer ()
 	return false
 end
 
+
+local function beta_func_DB ( qh, player, pname, betakey ) 
+	local result = dbPoll( qh, 0 )
+	if result and result[1] then
+		if result[1]["Name"] == pname or string.sub ( pname, 1, 5 ) == "[Vio]" then
+			outputChatBox ( "Du wirst weitergeleitet...", player, 125, 0, 0 )
+			sendPlayerToBetaServer ( player )
+		else
+			if result[1]["Name"] == "-" then
+				outputChatBox ( "Betakey verifiziert. Du wirst weitergeleitet...", player, 0, 125, 0 )
+				dbExec( handler, "UPDATE betakeys SET Name = ? WHERE Betakey LIKE ?", pname, betakey )
+				sendPlayerToBetaServer ( player )
+			else
+				outputChatBox ( "Der Betakey ist bereits in Verwendung!", player, 125, 0, 0 )
+			end
+		end
+	else
+		outputChatBox ( "Der Betakey ist ungueltig oder ist bereits aktiviert!", player, 125, 0, 0 )
+	end
+end
+
+
+
 function beta_func ( player, cmd, betakey )
 
 	if not isThisTheBetaServer () then
@@ -35,20 +58,7 @@ function beta_func ( player, cmd, betakey )
 				betakey = ""
 			end
 			local pname = getPlayerName ( player )
-			if MySQL_DatasetExist ( "betakeys", "Name LIKE '"..pname.."'" ) or string.sub ( pname, 1, 5 ) == "[Vio]" then
-				outputChatBox ( "Du wirst weitergeleitet...", player, 125, 0, 0 )
-				sendPlayerToBetaServer ( player )
-			elseif MySQL_DatasetExist ( "betakeys", "Betakey LIKE '"..betakey.."'" ) then
-				if MySQL_GetString ( "betakeys", "Name", "Betakey LIKE '"..betakey.."'" ) == "-" then
-					outputChatBox ( "Betakey verifiziert. Du wirst weitergeleitet...", player, 0, 125, 0 )
-					MySQL_SetString ( "betakeys", "Name", pname, "Betakey LIKE '"..betakey.."'" )
-					sendPlayerToBetaServer ( player )
-				else
-					outputChatBox ( "Der Betakey ist bereits in Verwendung!", player, 125, 0, 0 )
-				end
-			else
-				outputChatBox ( "Der Betakey ist ungueltig oder ist bereits aktiviert!", player, 125, 0, 0 )
-			end
+			dbQuery( beta_func_DB, { player, pname, betakey }, handler, "SELECT * FROM betakeys WHERE Name LIKE ? OR Betakey LIKE ?", pname, betakey )
 		end
 	else
 		vioSetElementData ( player, "playingtime", 60 * 500 )
@@ -90,7 +100,7 @@ function generateBetakeys ( player, cmd, count )
 				outputChatBox ( "Key Nr. "..i..": "..key, player, 200, 200, 0 )
 				key = string.upper ( key )
 				validBetakeys[key] = true
-				mysql_vio_query ( "INSERT INTO betakeys (Betakey, Name) VALUES ('"..key.."', '-')" )
+				dbExec ( handler, "INSERT INTO betakeys (Betakey, Name) VALUES (?, '-')", key )
 			end
 		end
 	end
@@ -99,16 +109,13 @@ addCommandHandler ( "betakey", generateBetakeys )
 
 function loadBetakeys ()
 
-	local result = mysql_query ( handler, "SELECT * FROM betakeys" )
-	if mysql_num_rows ( result ) then
-		local data = mysql_fetch_assoc ( result )
-		while data do
+	local result = dbPoll( dbQuery( handler, "SELECT * FROM betakeys" ), -1 )
+	if result and result[1] then
+		for i=1, #result do
+			local data = result[i]
 			if data["Key"] then
 				outputServerLog ( "Betakey: "..data["Key"] )
 				validBetakeys[data["Betakey"]] = true
-				data = mysql_fetch_assoc ( result )
-			else
-				break
 			end
 		end
 	end

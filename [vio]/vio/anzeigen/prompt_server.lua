@@ -20,7 +20,7 @@ function changePrompt ( player, cmd, ... )
 		
 		promptMainText = msg
 		
-		mysql_vio_query ( "UPDATE userdata SET pred = '0'" )
+		dbExec ( handler, "UPDATE userdata SET pred = '0'" )
 		
 		outputChatBox ( "Erfolgreich geändert!", player, 0, 200, 0 )
 	end

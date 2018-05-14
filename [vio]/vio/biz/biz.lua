@@ -35,75 +35,84 @@
 
 	TraeumeUndHoffnungen = createPickup ( -127.10718536377, 2258.1259765625, 28.063650131226, 3, 1239, 1, 0 )
 
-	pnsDohertyName = MySQL_GetString("biz", "Name", "Biz LIKE 'PaynSprayWangcars'")
-	pnsJuniperName = MySQL_GetString("biz", "Name", "Biz LIKE 'PaynSprayJuniper'")
-	sprunkName = MySQL_GetString("biz", "Name", "Biz LIKE 'Sprunk'")
-	pizzaStackName = MySQL_GetString("biz", "Name", "Biz LIKE 'WellStackedPizza'")
-	mystiesBarName = MySQL_GetString("biz", "Name", "Biz LIKE 'MistysBar'")
-	visageHotelName = MySQL_GetString("biz", "Name", "Biz LIKE 'Visage'")
-	vankHoffName = MySQL_GetString("biz", "Name", "Biz LIKE 'VankHoff'")
-	
-	tankstelleNordName = MySQL_GetString("biz", "Name", "Biz LIKE 'TankstelleNord'")
-	tankstelleSuedName = MySQL_GetString("biz", "Name", "Biz LIKE 'TankstelleSued'")
-	tankstellePineName = MySQL_GetString("biz", "Name", "Biz LIKE 'TankstellePine'")
-
-	pnsDohertyKasse = tonumber ( MySQL_GetString("biz", "Kasse", "Biz LIKE 'PaynSprayWangcars'") )
-	pnsJuniperKasse = tonumber ( MySQL_GetString("biz", "Kasse", "Biz LIKE 'PaynSprayJuniper'") )
-	sprunkKasse = tonumber ( MySQL_GetString("biz", "Kasse", "Biz LIKE 'Sprunk'") )
-	pizzaStackKasse = tonumber ( MySQL_GetString("biz", "Kasse", "Biz LIKE 'WellStackedPizza'") )
-	mystiesBarKasse = tonumber ( MySQL_GetString("biz", "Kasse", "Biz LIKE 'MistysBar'") )
-	visageHotelKasse = tonumber ( MySQL_GetString("biz", "Kasse", "Biz LIKE 'Visage'") )
-	vankHoffKasse = tonumber ( MySQL_GetString("biz", "Kasse", "Biz LIKE 'VankHoff'") )
-	
-	tankstelleNordKasse = tonumber ( MySQL_GetString("biz", "Kasse", "Biz LIKE 'TankstelleNord'") )
-	tankstelleSuedKasse = tonumber ( MySQL_GetString("biz", "Kasse", "Biz LIKE 'TankstelleSued'") )
-	tankstellePineKasse = tonumber ( MySQL_GetString("biz", "Kasse", "Biz LIKE 'TankstellePine'") )
-
-	pnsDohertyInhaber = MySQL_GetString("biz", "Inhaber", "Biz LIKE 'PaynSprayWangcars'")
-	pnsJuniperInhaber = MySQL_GetString("biz", "Inhaber", "Biz LIKE 'PaynSprayJuniper'")
-	sprunkInhaber = MySQL_GetString("biz", "Inhaber", "Biz LIKE 'Sprunk'")
-	pizzaStackInhaber = MySQL_GetString("biz", "Inhaber", "Biz LIKE 'WellStackedPizza'")
-	mystiesBarInhaber = MySQL_GetString("biz", "Inhaber", "Biz LIKE 'MistysBar'")
-	visageHotelInhaber = MySQL_GetString("biz", "Inhaber", "Biz LIKE 'Visage'")
-	vankHoffInhaber = MySQL_GetString("biz", "Inhaber", "Biz LIKE 'VankHoff'")
-	
-	tankstelleNordInhaber = MySQL_GetString("biz", "Inhaber", "Biz LIKE 'TankstelleNord'")
-	tankstelleSuedInhaber = MySQL_GetString("biz", "Inhaber", "Biz LIKE 'TankstelleSued'")
-	tankstellePineInhaber = MySQL_GetString("biz", "Inhaber", "Biz LIKE 'TankstellePine'")
-	
-	pnsDohertyPrice = tonumber ( MySQL_GetString("biz", "Preis", "Biz LIKE 'PaynSprayWangcars'") )
-	pnsJuniperPrice = tonumber ( MySQL_GetString("biz", "Preis", "Biz LIKE 'PaynSprayJuniper'") )
-	sprunkPrice = tonumber ( MySQL_GetString("biz", "Preis", "Biz LIKE 'Sprunk'") )
-	pizzaStackPrice = tonumber ( MySQL_GetString("biz", "Preis", "Biz LIKE 'WellStackedPizza'") )
-	mystiesBarPrice = tonumber ( MySQL_GetString("biz", "Preis", "Biz LIKE 'MistysBar'") )
-	visageHotelPrice = tonumber ( MySQL_GetString("biz", "Preis", "Biz LIKE 'Visage'") )
-	vankHoffPrice = tonumber ( MySQL_GetString("biz", "Preis", "Biz LIKE 'VankHoff'") )
-	
-	tankstelleNordPrice = tonumber ( MySQL_GetString("biz", "Preis", "Biz LIKE 'TankstelleNord'") )
-	tankstelleSuedPrice = tonumber ( MySQL_GetString("biz", "Preis", "Biz LIKE 'TankstelleSued'") )
-	tankstellePinePrice = tonumber ( MySQL_GetString("biz", "Preis", "Biz LIKE 'TankstellePine'") )
-	
+	local result = dbPoll( dbQuery( handler, "SELECT * FROM biz" ), -1 )
+	if result and result[1] then
+		for i=1, #result do
+			local biz = result[i]["Biz"]
+			if biz == "PaynSprayWangcars" then
+				pnsDohertyName = result[i]["Name"]
+				pnsDohertyKasse = tonumber( result[i]["Kasse"] )
+				pnsDohertyInhaber = result[i]["Inhaber"]
+				pnsDohertyPrice = tonumber( result[i]["Preis"] )
+			elseif biz == "PaynSprayJuniper" then
+				pnsJuniperName = result[i]["Name"]
+				pnsJuniperKasse = tonumber( result[i]["Kasse"] )
+				pnsJuniperInhaber = result[i]["Inhaber"]
+				pnsJuniperPrice = tonumber( result[i]["Preis"] )
+			elseif biz == "Sprunk" then
+				sprunkName = result[i]["Name"]
+				sprunkKasse = tonumber( result[i]["Kasse"] )
+				sprunkInhaber = result[i]["Inhaber"]
+				sprunkPrice = tonumber( result[i]["Preis"] )
+			elseif biz == "WellStackedPizza" then
+				pizzaStackName = result[i]["Name"]
+				pizzaStackKasse = tonumber( result[i]["Kasse"] )
+				pizzaStackInhaber = result[i]["Inhaber"]
+				pizzaStackPrice = tonumber( result[i]["Preis"] )
+			elseif biz == "MistysBar" then
+				mystiesBarName = result[i]["Name"]
+				mystiesBarKasse = tonumber( result[i]["Kasse"] )
+				mystiesBarInhaber = result[i]["Inhaber"]
+				mystiesBarPrice = tonumber( result[i]["Preis"] )
+			elseif biz == "Visage" then
+				visageHotelName = result[i]["Name"]
+				visageHotelKasse = tonumber( result[i]["Kasse"] )
+				visageHotelInhaber = result[i]["Inhaber"]
+				visageHotelPrice = tonumber( result[i]["Preis"] )
+			elseif biz == "VankHoff" then
+				vankHoffName = result[i]["Name"]
+				vankHoffKasse = tonumber( result[i]["Kasse"] )
+				vankHoffInhaber = result[i]["Inhaber"]
+				vankHoffPrice = tonumber( result[i]["Preis"] )
+			elseif biz == "TankstelleNord" then
+				tankstelleNordName = result[i]["Name"]
+				tankstelleNordKasse = tonumber( result[i]["Kasse"] )
+				tankstelleNordInhaber = result[i]["Inhaber"]
+				tankstelleNordPrice = tonumber( result[i]["Preis"] )
+			elseif biz == "TankstelleSued" then
+				tankstelleSuedName = result[i]["Name"]
+				tankstelleSuedKasse = tonumber( result[i]["Kasse"] )
+				tankstelleSuedInhaber = result[i]["Inhaber"]
+				tankstelleSuedPrice = tonumber( result[i]["Preis"] )
+			elseif biz == "TankstellePine" then
+				tankstellePineName = result[i]["Name"]
+				tankstellePineKasse = tonumber( result[i]["Kasse"] )
+				tankstellePineInhaber = result[i]["Inhaber"]
+				tankstellePinePrice = tonumber( result[i]["Preis"] )
+			end
+		end
+	end
 	bizkeys = { [1]="pnsDoherty", [2]="pnsJuniper", [3]="sprunk", [4]="pizzaStack", [5]="mystiesBar", [6]="visageHotel", [7]="vankHoff", [8]="tankstelleNord", [9]="tankstelleSued", [10]="tankstellePine" }
 	
 	addEventHandler ( "onPickupHit", getRootElement(), onBizPickupHit )
 	
 	setTimer ( updateBizKasse, 300000, 1 )
 end
-setTimer ( setBizData, 1000, 1 )
+
 
 function updateBizKasse ()
+	local querystr = dbPrepareString( handler, "UPDATE biz SET Kasse=? WHERE Name LIKE ?;", pnsDohertyKasse, pnsDohertyName )
+	querystr = querystr .. dbPrepareString( handler, "UPDATE biz SET Kasse=? WHERE Name LIKE ?;", pnsJuniperKasse, pnsJuniperName )
+	querystr = querystr .. dbPrepareString( handler, "UPDATE biz SET Kasse=? WHERE Name LIKE ?;", sprunkKasse, sprunkName )
+	querystr = querystr .. dbPrepareString( handler, "UPDATE biz SET Kasse=? WHERE Name LIKE ?;", pizzaStackKasse, pizzaStackName )
+	querystr = querystr .. dbPrepareString( handler, "UPDATE biz SET Kasse=? WHERE Name LIKE ?;", mystiesBarKasse, mystiesBarName )
+	querystr = querystr .. dbPrepareString( handler, "UPDATE biz SET Kasse=? WHERE Name LIKE ?;", visageHotelKasse, visageHotelName )
+	querystr = querystr .. dbPrepareString( handler, "UPDATE biz SET Kasse=? WHERE Name LIKE ?;", vankHoffKasse, vankHoffName )
+	querystr = querystr .. dbPrepareString( handler, "UPDATE biz SET Kasse=? WHERE Name LIKE ?;", tankstelleNordKasse, tankstelleNordName )
+	querystr = querystr .. dbPrepareString( handler, "UPDATE biz SET Kasse=? WHERE Name LIKE ?;", tankstelleSuedKasse, tankstelleSuedName )
+	querystr = querystr .. dbPrepareString( handler, "UPDATE biz SET Kasse=? WHERE Name LIKE ?;", tankstellePineKasse, tankstellePineName )
 
-	MySQL_SetString("biz", "Kasse", pnsDohertyKasse, "Name LIKE '"..pnsDohertyName.."'")
-	MySQL_SetString("biz", "Kasse", pnsJuniperKasse, "Name LIKE '"..pnsJuniperName.."'")
-	MySQL_SetString("biz", "Kasse", sprunkKasse, "Name LIKE '"..sprunkName.."'")
-	MySQL_SetString("biz", "Kasse", pizzaStackKasse, "Name LIKE '"..pizzaStackName.."'")
-	MySQL_SetString("biz", "Kasse", mystiesBarKasse, "Name LIKE '"..mystiesBarName.."'")
-	MySQL_SetString("biz", "Kasse", visageHotelKasse, "Name LIKE '"..visageHotelName.."'")
-	MySQL_SetString("biz", "Kasse", vankHoffKasse, "Name LIKE '"..vankHoffName.."'")
-	
-	MySQL_SetString("biz", "Kasse", tankstelleNordKasse, "Name LIKE '"..tankstelleNordName.."'")
-	MySQL_SetString("biz", "Kasse", tankstelleSuedKasse, "Name LIKE '"..tankstelleSuedName.."'")
-	MySQL_SetString("biz", "Kasse", tankstellePineKasse, "Name LIKE '"..tankstellePineName.."'")
+	dbExec( handler, querystr )
 	
 	outputDebugString ( "Bizkassen wurden gespeichert!" )
 	setTimer ( updateBizKasse, 300000, 1 )
@@ -171,8 +180,8 @@ function buybiz_func ( player, cmd, typ )
 						triggerClientEvent ( player, "infobox_start", getRootElement(), "\nGeschaeft gekauft!\nTippe /bizhelp\nfuer mehr\nInformationen!", 7500, 0, 125, 0 )
 						vioSetElementData ( player, "bizkey", bizkey )
 						local pname = getPlayerName ( player )
-						MySQL_SetString("userdata", "Bizschluessel", vioGetElementData ( player, "bizkey" ), "Name LIKE '"..pname.."'")
-						MySQL_SetString("biz", "Inhaber", pname, "Name LIKE '".._G[biz.."Name"].."'")
+						dbExec( handler, "UPDATE userdata SET Bizschluessel = ? WHERE Name LIKE ?", vioGetElementData ( player, "bizkey" ), pname )
+						dbExec( handler, "UPDATE biz SET Inhaber = ? WHERE Name LIKE ?", pname, _G[biz.."Name"])
 						_G[biz.."Inhaber"] = pname
 						if typ == "bar" then
 							takePlayerMoney ( player, bizprice )
@@ -219,8 +228,8 @@ function sellbiz_func ( player )
 		vioSetElementData ( player, "bizkey", 0 )
 		vioSetElementData ( player, "money", vioGetElementData ( player, "money" ) + bizprice )
 		triggerClientEvent ( player, "HudEinblendenMoney", getRootElement() )
-		MySQL_SetString("userdata", "Bizschluessel", vioGetElementData ( player, "bizkey" ), "Name LIKE '"..pname.."'")
-		MySQL_SetString("biz", "Inhaber", "none", "Name LIKE '".._G[biz.."Name"].."'")
+		dbExec( handler, "UPDATE userdata SET Bizschluessel = ? WHERE Name LIKE ?", vioGetElementData ( player, "bizkey" ), pname )
+		dbExec( handler, "UPDATE biz SET Inhaber = ? WHERE Name LIKE ?", "none", _G[biz.."Name"] )
 		datasave_remote ( player )
 	end
 end

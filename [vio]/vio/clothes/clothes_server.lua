@@ -8,7 +8,7 @@ zipBlip = createBlip ( -1882.7956542969, 866.05242919922, 34.165866851807, 45, 1
 
 function clothesBuyServer_func ( player, skinid, skinpreis )
 
-	if player == client and tostring ( skinid ) == MySQL_Save ( tostring ( skinid ) )then
+	if player == client then
 		local skinpreis = tonumber ( skinpreis )
 		local money = tonumber( vioGetElementData ( player, "money" ) )
 		if money >= skinpreis then

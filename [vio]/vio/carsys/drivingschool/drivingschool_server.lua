@@ -63,7 +63,7 @@ function showNextDrivingSchoolMarker ( player )
 			vioSetElementData ( player, "carlicense", 1 )
 			playSoundFrontEnd ( player, 40 )
 			vioSetElementData ( player, "money", vioGetElementData ( player, "money" ) - vioGetElementData ( player, "drivingLicensePrice" ) )
-			MySQL_SetString ( "userdata", "Autofuehrerschein", vioGetElementData ( player, "carlicense" ), "Name LIKE '"..getPlayerName ( player ).."'")
+			dbExec( handler, "UPDATE userdata SET Autofuehrerschein = ? WHERE Name LIKE ?", vioGetElementData ( player, "carlicense" ), getPlayerName ( player ) )
 		end
 	end
 end

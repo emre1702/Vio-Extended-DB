@@ -1,16 +1,15 @@
 ﻿function checkForOldMails ()
 
-	result = mysql_query(handler, "SELECT * FROM email")
+	result, errorcode, errormsg = dbPoll( dbQuery( handler, "SELECT * FROM email"), -1 )
 	deletedMails = 0
 	mails = 0
 	if( not result) then
-		outputDebugString("Error executing the query: (" .. mysql_errno(handler) .. ") " .. mysql_error(handler))
+		outputDebugString("Error executing the query: (" .. errorcode .. ") " .. errormsg )
 	else
-		if(mysql_num_rows(result) > 0) then
-			mailData = mysql_fetch_assoc(result)
+		if #result > 0 then
+			mailData = table.remove ( result, 1 )
 			mySQLMailCheck ()
 		else
-			mysql_free_result(result)
 			outputServerLog("Es wurden keine Mails gefunden")
 		end
 	end
@@ -22,15 +21,14 @@ function mySQLMailCheck ()
 	mails = mails + 1
 
 	if isMailingDateOld ( mailData["Yearday"], mailData["Year"] ) then
-		MySQL_DelRow("email", "Empfaenger LIKE '"..mailData["Empfaenger"].."' AND Text LIKE '"..mailData["Text"].."'")
+		dbExec( handler, "REMOVE FROM email WHERE Name Empfaenger ? AND Text LIKE ?", mailData["Empfaenger"], mailData["Text"] )
 		deletedMails = deletedMails + 1
 	end
 	
-	mailData = mysql_fetch_assoc(result)
+	mailData = table.remove ( result, 1 )
 	if mailData then
 		mySQLMailCheck ()
 	else
-		mysql_free_result(result)
 		outputServerLog("Es wurden "..mails.." E-Mails gefunden und "..deletedMails.." alte Mails geloescht.")
 	end
 end
@@ -57,57 +55,58 @@ specMailAdresses = { ["admin@FORUMADRESSE"]=true, ["admin@ltr.net"]=true, ["admi
 ["admin@fbi.de"]=true,
 ["admin@bundeswehr.de"]=true }
 
-function sendMail_func ( text, betreff, to )
 
-	local text = MySQL_Save ( text )
-	local betreff = MySQL_Save ( betreff )
-	local to = MySQL_Save ( to )
-	if specMailAdresses [ string.lower ( to ) ] then
-		exists = true
-	else
-		to = gettok ( to, 1, string.byte ( '@' ) )
-		exists = MySQL_DatasetExist("players", "Name LIKE '"..to.."'")
+local function sendMail_func_DB ( qh, client, text, betreff, to )
+	local result = true
+	if qh then
+		result = dbPoll( qh, 0 )
 	end
-	if exists then
-		local mail = MySQL_Save ( tostring ( getPlayerName(client).."@FORUMADRESSE|"..betreff.."|"..timestamp()..": "..text ) )
-		--if mail == MySQL_Save ( mail ) then
-			outputChatBox ( "E-Mail gesendet!", client, 0, 125, 0 )
-			local time = getRealTime()
-			local y = time.year
-			local yd = time.yearday
-			
-			local result = mysql_query(handler, "INSERT INTO email (Empfaenger, Text, Yearday, Year) VALUES ('"..to.."', '"..mail.."', '"..yd.."', '"..y.."')")
-			if( not result) then
-				outputDebugString("Error executing the query: (" .. mysql_errno(handler) .. ") " .. mysql_error(handler))
-			else
-				mysql_free_result(result)
-			end
-			if isElement ( getPlayerFromName ( to ) ) and vioGetElementData ( getPlayerFromName ( to ), "loggedin" ) == 1 then
-				getMailsForClient_func ( to )
-			end
-		--else
-		--	outputChatBox ( "Du verwendest einige ungeultige Zeichen in deiner E-Mail!", client, 125, 0, 0 )
-		--end
+	if result and ( not qh or result[1] ) then
+		local mail = tostring ( getPlayerName(client).."@FORUMADRESSE|"..betreff.."|"..timestamp()..": "..text )
+		outputChatBox ( "E-Mail gesendet!", client, 0, 125, 0 )
+		local time = getRealTime()
+		local y = time.year
+		local yd = time.yearday
+		
+		local result = dbExec( handler, "INSERT INTO email (Empfaenger, Text, Yearday, Year) VALUES (?, ?, '"..yd.."', '"..y.."')", to, mail )
+		if( not result) then
+			outputDebugString("Error executing the query sendMail_func_DB: (" .. getPlayerName( client ) .. ") to " .. to .. ": "..betreff )
+		end
+		if isElement ( getPlayerFromName ( to ) ) and vioGetElementData ( getPlayerFromName ( to ), "loggedin" ) == 1 then
+			getMailsForClient_func ( to )
+		end
 	else
 		outputChatBox ( "Ungueltige Eingabe, bitte verwende folgende Eingabe: [Name@FORUMADRESSE]", client, 125, 0, 0 )
 	end
 end
+
+function sendMail_func ( text, betreff, to )
+	if specMailAdresses [ string.lower ( to ) ] then
+		sendMail_func_DB( false, client, text, betreff, to )
+	else
+		to = gettok ( to, 1, string.byte ( '@' ) )
+		dbQuery( sendMail_func_DB, { client, text, betreff, to }, handler, "SELECT true FROM players WHERE Name LIKE ?", to )
+	end
+	
+end
 addEvent ( "sendMail", true )
 addEventHandler ( "sendMail", getRootElement(), sendMail_func )
 
-function getMailsForClient_func ( pname )
 
-	local adress = pname
-	result = mysql_query(handler, "SELECT * FROM email WHERE Empfaenger LIKE '"..adress.."'")
+local function getMailsForClient_func_DB ( qh, pname )
+	result = dbPoll( qh, 0 )
 	player = getPlayerFromName ( pname )
-	if mysql_num_rows(result) > 0 then
-		mailData = mysql_fetch_assoc(result)
-		while mailData do
+	if result and result[1] then
+		for i=1, #result do
+			local mailData = result[i]
 			triggerClientEvent ( player, "reciveMail", getRootElement(), mailData["Text"] )
-			outputDebugString ( "Empfaenger LIKE "..adress.." AND Text LIKE "..mailData["Text"] )
-			mailData = mysql_fetch_assoc(result)
+			outputDebugString ( "Empfaenger LIKE "..pname.." AND Text LIKE "..mailData["Text"] )
 		end
-		mysql_free_result(result)
+		dbExec( handler, "DELETE FROM email WHERE Empfaenger LIKE ?", pname )
 	end
-	mysql_vio_query ( "DELETE FROM email WHERE Empfaenger LIKE '"..pname.."'" )
+end
+
+function getMailsForClient_func ( pname )
+	dbQuery( getMailsForClient_func_DB, { pname }, handler, "SELECT * FROM email WHERE Empfaenger LIKE ?", pname )
+	
 end

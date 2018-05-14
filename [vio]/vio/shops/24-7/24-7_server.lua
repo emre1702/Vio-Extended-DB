@@ -130,7 +130,7 @@ function itemBuy_func ( player, item, cam, nvslot )
 					vioSetElementData ( player, "money", money - wuerfel_price )
 					takePlayerMoney ( player, wuerfel_price )
 					vioSetElementData ( player, "dice", 1 )
-					MySQL_SetString("inventar", "Wuerfel", vioGetElementData ( player, "dice" ), "Name LIKE '"..getPlayerName(player).."'")
+					dbExec( handler, "inventar", "Wuerfel", vioGetElementData ( player, "dice" ), dbPrepareString( handler, "Name LIKE ?", getPlayerName(player) ) )
 					playSoundFrontEnd ( player, 40 )
 					triggerClientEvent ( player, "infobox_start", getRootElement(), "\n\nGekauft!", 7500, 0, 125, 0 )
 				else

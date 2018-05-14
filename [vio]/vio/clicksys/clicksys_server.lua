@@ -2,6 +2,23 @@
 secondClickTypes = { ["ped"] = true, ["player"] = true, ["vehicle"] = true }
 clickSpecialPeds = { [rathausped]=true, [vincenzo]=true, [aztecasBouncer]=true }
 
+
+local function player_click_trunk_DB ( qh )
+	local result = dbPoll( qh, 0 )
+	if result and result[1] then
+		local data = result[1]["Kofferraum"]
+		local drugs = tonumber ( gettok ( data, 1, string.byte ( '|' ) ) )
+		local mats = tonumber ( gettok ( data, 2, string.byte ( '|' ) ) )
+		local gun = tonumber ( gettok ( data, 3, string.byte ( '|' ) ) )
+		local ammo = tonumber ( gettok ( data, 4, string.byte ( '|' ) ) )
+		triggerClientEvent ( source, "showTrunkGui", getRootElement(), drugs, mats, gun, ammo )
+		vioSetElementData ( source, "clickedVehicle", clickedElement )
+		showCursor ( source, true )
+		setElementData ( source, "ElementClicked", true )
+	end
+end
+
+
 function player_click ( button, state, clickedElement, x, y, z )
 
 	if state == "down" and not getElementData ( source, "ElementClicked" ) then
@@ -135,7 +152,7 @@ function player_click ( button, state, clickedElement, x, y, z )
 							setTimer ( vioSetElementData, 60000, 1, source, "objectDelete", nil )
 						else
 							local id = vioGetElementData ( clickedElement, "id" )
-							mysql_vio_query ( "DELETE FROM object WHERE id LIKE '"..id.."'" )
+							dbExec( handler, "DELETE FROM object WHERE id LIKE ?", id )
 							destroyElement ( clickedElement )
 						end
 					end
@@ -155,7 +172,7 @@ function player_click ( button, state, clickedElement, x, y, z )
 						
 						destroyElement ( weedPlants[id] )
 						
-						mysql_vio_query ( "DELETE FROM weed WHERE id = '"..id.."'" )
+						dbExec( handler, "DELETE FROM weed WHERE id = ?", id )
 						
 						outputChatBox ( "Du hast "..drugs.." Gramm Drogen geerntet!", source, 0, 125, 0 )
 						vioSetElementData ( source, "drugs", vioGetElementData ( source, "drugs" ) + drugs )
@@ -226,15 +243,7 @@ function player_click ( button, state, clickedElement, x, y, z )
 					if vioGetElementData ( player, "wanzen" ) then
 						createWanze ( player, clickedElement, false, false, false )
 					elseif getVehicleTrunkState ( veh ) then
-						local data = MySQL_GetString( "vehicles", "Kofferraum", "Besitzer LIKE '"..vioGetElementData ( veh, "owner" ).."' AND Slot LIKE '"..vioGetElementData ( veh, "carslotnr_owner" ).."'" )
-						local drugs = tonumber ( gettok ( data, 1, string.byte ( '|' ) ) )
-						local mats = tonumber ( gettok ( data, 2, string.byte ( '|' ) ) )
-						local gun = tonumber ( gettok ( data, 3, string.byte ( '|' ) ) )
-						local ammo = tonumber ( gettok ( data, 4, string.byte ( '|' ) ) )
-						triggerClientEvent ( source, "showTrunkGui", getRootElement(), drugs, mats, gun, ammo )
-						vioSetElementData ( source, "clickedVehicle", clickedElement )
-						showCursor ( source, true )
-						setElementData ( source, "ElementClicked", true )
+						dbQuery( player_click_trunk_DB, { source, clickedElement }, handler, "SELECT Kofferraum FROM vehicles WHERE Besitzer LIKE ? AND Slot LIKE ?", vioGetElementData ( veh, "owner" ), vioGetElementData ( veh, "carslotnr_owner" ) )
 					else
 						triggerClientEvent ( source, "_createCarmenue", getRootElement(), clickedElement )
 						setElementData ( source, "clickedVehicle", clickedElement )

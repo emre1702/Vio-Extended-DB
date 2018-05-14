@@ -64,7 +64,7 @@ function blackListKillCheck ( player, killer, weapon )
 				prizeText = prizeText.."."
 			end
 			blacklistPlayers[killerFaction][name] = nil
-			MySQL_DelRow ( "blacklist", "Name LIKE '"..name.."' AND Fraktion LIKE '"..killerFaction.."'" )
+			dbExec( handler, "REMOVE FROM blacklist WHERE Name LIKE ? AND Fraktion LIKE ?", name, killerFaction )
 			givePlayerSaveMoney ( killer, prizeMoney )
 			outputChatBox ( "Du wurdest von einem Fraktionsmitglied erledigt, weil du auf der Blacklist warst.", player, 200, 0, 0 )
 			outputChatBox ( "Du hast jemanden von der Blacklist erledigt!", killer, 0, 200, 0 )
@@ -75,17 +75,18 @@ end
 
 -- Delete old entrys --
 local blackListCurTime = getSecTime ( 0 )
-function checkBlackListEntrys()
 
-	result = mysql_query ( handler, "SELECT * FROM blacklist" )
-	if result then
-		if ( mysql_num_rows ( result ) > 0 ) then
-			blackListData = mysql_fetch_assoc ( result )
-			mySQLBlackList ()
-		else
-			mysql_free_result ( result )
-		end
+local function checkBlackListEntrys_DB ( qh ) 
+	result = dbPoll( qh, 0 )
+	if result and result[1] then
+		blackListData = table.remove( result, 1 )
+		mySQLBlackList ()
 	end
+end
+
+
+function checkBlackListEntrys()
+	dbQuery( checkBlackListEntrys_DB, handler, "SELECT * FROM blackListData" )
 end
 setTimer ( privVeh_spawning, 5000, 1 )
 
@@ -97,14 +98,12 @@ function mySQLBlackList ()
 	local Eintragungsdatum = blackListData["Eintragungsdatum"]
 	
 	if blackListCurTime - Eintragungsdatum > 7 * 24 * 60 * 60 then
-		MySQL_DelRow ( "blacklist", "Name LIKE '"..Name.."' AND Fraktion LIKE '"..Fraktions.."'" )
+		dbExec( handler, "REMOVE FROM blacklist WHERE Name LIKE ? AND Fraktion LIKE ?", Name, Fraktions )
 	end
 	
-	blackListData = mysql_fetch_assoc ( result )
+	blackListData = table.remove( result, 1 )
 	if blackListData then
 		mySQLBlackList ()
-	else
-		mysql_free_result ( result )
 	end
 end
 checkBlackListEntrys()
@@ -151,7 +150,7 @@ function blacklistdelete_func ( player, name )
 	if name then
 		local fraktion = vioGetElementData ( player, "fraktion" )
 		blacklistPlayers[fraktion][name] = nil
-		MySQL_DelRow ( "blacklist", "Name LIKE '"..name.."' AND Fraktion LIKE '"..fraktion.."'" )
+		dbExec( handler, "REMOVE FROM blacklist WHERE Name LIKE ? AND Fraktion LIKE ?", name, fraktion )
 		outputChatBox ( "Der Spieler wurde von der Blacklist geloescht!", player, 0, 125, 0 )
 	else
 		outputChatBox ( "Der Spieler ist nicht auf der Blacklist!", player, 125, 0, 0 )
@@ -191,8 +190,7 @@ function addBlacklist_func ( player, member, text )
 					if not playersAddetToBlacklist[vioGetElementData(player,"fraktion")][member] then
 						playersAddetToBlacklist[vioGetElementData(player,"fraktion")][member] = true
 						
-						local result = mysql_query ( handler, "INSERT INTO blacklist ( Name, Eintraeger, Fraktion, Grund, Eintragungsdatum ) VALUES ( '"..member.."', '"..pname.."', '"..fraktion.."', '"..text.."', '"..getSecTime ( 0 ).."' ) " )
-						mysql_free_result ( result )
+						dbExec( handler, "INSERT INTO blacklist ( Name, Eintraeger, Fraktion, Grund, Eintragungsdatum ) VALUES ( ?, ?, ?, ?, '"..getSecTime ( 0 ).."' ) ", member, pname, fraktion, text )
 						infobox ( player, "\n\nDu hast den\nSpieler auf die\nBlacklist gesetzt!", 5000, 125, 0, 0 )
 						blacklistPlayers[fraktion][getPlayerName(getPlayerFromName(member))] = true
 						blacklistReason[fraktion][getPlayerName(getPlayerFromName(member))] = text
@@ -212,17 +210,14 @@ function addBlacklist_func ( player, member, text )
 end
 
 function isOnBlacklist ( pname, fraktion )
-
-	if MySQL_DatasetExist ( "blacklist", "Name LIKE '"..pname.."' AND Fraktion LIKE '"..fraktion.."'" ) then
-		return true
-	end
-	return false
+	local result = dbPoll( dbQuery( handler, "SELECT Name FROM blacklist WHERE Name LIKE ? AND Fraktion LIKE ?", pname, fraktion ), -1 )
+	return result ~= nil and result[1] ~= nil
 end
 
 function getBlacklistGrund ( pname, fraktion )
 
-	local ress = MySQL_GetString("blacklist", "Grund", "Name LIKE '"..pname.."' AND Fraktion LIKE '"..fraktion.."'" )
+	local ress = dbPoll( dbQuery( handler, "SELECT Grund FROM blacklist WHERE Name LIKE ? AND Fraktion LIKE ?", pname, fraktion ), -1 ) 
 	
-	return ress
+	return ress and ress[1] and ress[1]["Grund"] or "-"
 	
 end

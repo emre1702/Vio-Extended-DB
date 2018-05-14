@@ -72,65 +72,70 @@ addEventHandler ( "purchaseItem", getRootElement(), purchaseItem_func )
 
 placedObjects = {}
 
-function createObjectToSave ( model, x, y, z, rx, placer, daysToKeep )
 
-	local time = getMinTime () + 60 * 24 * daysToKeep
-	if MySQL_ExistAmount ( "object", "placer LIKE '"..getPlayerName ( placer ).."'" ) < maxPlaceAbleObjectsPerPlayer then
-		if vioGetElementData ( player, "playingtime" ) >= 600 then
-			mysql_vio_query ( "INSERT INTO object ( model, x, y, z, rx, placer, deleteTime ) VALUES ( '"..model.."', '"..x.."', '"..y.."', '"..z.."', '"..rx.."', '"..getPlayerName ( placer ).."', '"..time.."' )" )
-			setTimer (
-				function ( model, x, y, z, rx, placer )
-					local id = tonumber ( MySQL_GetString ( "object", "id", "taken = '0'" ) )
-					MySQL_SetString ( "object", "taken", "1", "id LIKE '"..id.."'" )
-					local object = createObject ( model, x, y, z, 0, 0, rx )
-					vioSetElementData ( object, "placer", getPlayerName ( placer ) )
-					vioSetElementData ( object, "id", id )
-					vioSetElementData ( object, "placeableObjectMySQL", true )
-					placedObjects[id] = object
-				end,
-			500, 1, model, x, y, z, rx, placer )
-			vioSetElementData ( player, "object", 0 )
-			infobox ( player, "Objekt platziert.", 5000, 0, 200, 0 )
+local function createObjectToSave_DB2 ( qh, model, x, y, z, rx, placer )
+	local result = dbPoll( qh, 0 )
+	if result and result[1] then
+		local id = tonumber ( result[1]["id"] )
+		dbExec( handler, "UPDATE object SET taken = '1' WHERE id LIKE ?", id )
+		local object = createObject ( model, x, y, z, 0, 0, rx )
+		vioSetElementData ( object, "placer", getPlayerName ( placer ) )
+		vioSetElementData ( object, "id", id )
+		vioSetElementData ( object, "placeableObjectMySQL", true )
+		placedObjects[id] = object
+	end
+end
+
+local function createObjectToSave_DB1 ( qh, placer, model, x, y, z, rx, placer, time )
+	local result = dbPoll( qh, 0 )
+	if not result or #result < maxPlaceAbleObjectsPerPlayer then
+		if vioGetElementData ( placer, "playingtime" ) >= 600 then
+			dbExec( handler, "INSERT INTO object ( model, x, y, z, rx, placer, deleteTime ) VALUES ( ?, ?, ?, ?, ?, ?, ? )", model, x, y, z, rx, getPlayerName( placer ), time )
+			setTimer ( dbQuery, 500, 1, createObjectToSave_DB2, { model, x, y, z, rx, placer }, handler, "SELECT id FROM object WHERE taken = '0'" )
+			vioSetElementData ( placer, "object", 0 )
+			infobox ( placer, "Objekt platziert.", 5000, 0, 200, 0 )
 		else
-			infobox ( player, "Du hast keine 10\nSpielstunden!", 5000, 125, 0, 0 )
+			infobox ( placer, "Du hast keine 10\nSpielstunden!", 5000, 125, 0, 0 )
 		end
 	else
-		infobox ( player, "Du kannst maximal\n"..maxPlaceAbleObjectsPerPlayer.." Objekte zur\nselben Zeit platzieren.\nTippe /delmyobjects\nzum loeschen.", 5000, 125, 0, 0 )
+		infobox ( player, "Du kannst maximal\n"..maxPlaceAbleObjectsPerPlayer.." Objekte zur\nselben Zeit platzieren.\nTippe /delmyobjects\nzum loeschen.", 5000, 125, 0, 0 )	
 	end
+end
+
+function createObjectToSave ( model, x, y, z, rx, placer, daysToKeep )
+	local time = getMinTime () + 60 * 24 * daysToKeep
+	dbQuery( createObjectToSave_DB1, { model, x, y, z, rx, placer, time }, handler, "SELECT placer FROM object WHERE placer LIKE ?", getPlayerName( placer ) )
+end
+
+local function delmyobjects_DB ( qh, player )
+	local result = dbPoll( qh, 0 )
+	if result and result[1] then
+		for i = 1, #result do
+			local id = tonumber( result[i]["id"] )
+			destroyElement ( placedObjects[id] )
+		end
+		dbExec( handler, "DELETE FROM object WHERE placer LIKE ?", getPlayerName( player ) )
+	end
+	outputChatBox ( "Alle von dir plazierten Objekte wurden geloescht.", player, 200, 200, 0 )
 end
 
 function delmyobjects ( player )
-
-	for i = 1, maxPlaceAbleObjectsPerPlayer do
-		local id = MySQL_GetString ( "object", "id", "placer LIKE '"..getPlayerName ( player ).."'" )
-		if id then
-			id = tonumber ( id )
-			destroyElement ( placedObjects[id] )
-			mysql_vio_query ( "DELETE FROM object WHERE id LIKE '"..id.."'" )
-		end
-	end
-	mysql_vio_query ( "DELETE FROM object WHERE placer LIKE '"..getPlayerName ( player ).."'" )
-	outputChatBox ( "Alle von dir plazierten Objekte wurden geloescht.", player, 200, 200, 0 )
+	dbQuery( delmyobjects_DB, { player }, handler, "SELECT id FROM object WHERE placer LIKE ?", getPlayerName( player ) )
 end
 addCommandHandler ( "delmyobjects", delmyobjects )
 
-function createSaveAblePlacedObjects ()
-
-	mysql_vio_query ( "DELETE FROM object WHERE deleteTime < '"..getMinTime ().."'" )
-	
-	local data
-	local result = mysql_query ( handler, "SELECT * FROM object" )
-	if result then
-		if ( mysql_num_rows ( result ) > 0 ) then
-			data = mysql_fetch_assoc ( result )
-			if data then
-				createNextPlaceableObject ( data, result )
-			end
-		else
-			mysql_free_result ( result )
-			outputServerLog ( "Es wurden keine platzierbaren Objekte gefunden." )
-		end
+local function createSaveAblePlacedObjects_DB ( qh )
+	local result = dbPoll( qh, 0 )
+	if result and result[1] then
+		createNextPlaceableObject ( table.remove( result, 1 ), result )
+	else 
+		outputServerLog ( "Es wurden keine platzierbaren Objekte gefunden." )
 	end
+end
+
+function createSaveAblePlacedObjects ()
+	dbExec( handler, "DELETE FROM object WHERE deleteTime < '"..getMinTime ().."'" )
+	dbQuery ( createSaveAblePlacedObjects_DB, handler, "SELECT * FROM object" )
 end
 
 function createNextPlaceableObject ( data, result )
@@ -154,7 +159,7 @@ function createNextPlaceableObject ( data, result )
 	
 	placedObjects[id] = object
 	
-	data = mysql_fetch_assoc ( result )
+	data = table.remove( result, 1 )
 	if data then
 		createNextPlaceableObject ( data, result )
 	end

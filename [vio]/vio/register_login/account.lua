@@ -15,7 +15,7 @@ pnameColumn = {
 fieldDatas = {}
 fieldNames = {}
 
-for key, index in pairs ( tablesToMoveOver ) do
+--[[for key, index in pairs ( tablesToMoveOver ) do
 	fieldDatas[key] = {}
 	local i = 0
 	local fieldString = ""
@@ -35,25 +35,25 @@ for key, index in pairs ( tablesToMoveOver ) do
 	end
 	fieldNames[key] = fieldString
 	mysql_free_result ( result )
-end
+end]]
 
 function isRegistered ( pname )
 
-	if MySQL_DatasetExist ( "players", "Name LIKE '"..MySQL_Save ( pname ).."'") then
+	if MySQL_DatasetExist ( "players", dbPrepareString( handler, "Name LIKE ?", pname ) then
 		return true
-	else
+	--[[else
 		local result = mysql_query ( handler_old, "SELECT * from players WHERE Name LIKE '"..pname.."'" )
 		if mysql_num_rows ( result ) > 0 then
 			removeAccountIntoNewDatabase ( pname )
 			mysql_free_result ( result )
 			return true
 		end
-		mysql_free_result ( result )
+		mysql_free_result ( result )]]
 	end
 	return false
 end
 
-function moveAccountToOldDatabase ( name )
+--[=[function moveAccountToOldDatabase ( name )
 	if (gMysqlDatabase1 ~= gMysqlDatabase2) then
 		local query, dsatz, i, fieldValues, result
 		local errorC = 1
@@ -102,10 +102,10 @@ function moveAccountToOldDatabase ( name )
 	else
 		outputLog ( "Spielerdaten werden nicht ausgelagert, da nur eine Datenbank existiert!", "outsource" )
 	end
-end
+end]=]
 
 function removeAccountIntoNewDatabase ( name )
-	if (gMysqlDatabase1 ~= gMysqlDatabase2) then
+	--[=[if (gMysqlDatabase1 ~= gMysqlDatabase2) then
 	local query, dsatz
 	outputLog ( name.." wurde eingelagert.", "outsource" )
 	for key1, index1 in pairs ( tablesToMoveOver ) do
@@ -145,11 +145,11 @@ function removeAccountIntoNewDatabase ( name )
 			moveVehiclesToNewDatabase ( name )
 		end
 	end
-	end
+	end]=]
 end
 
 function outSourceAccounts ()
-	if (gMysqlDatabase1 ~= gMysqlDatabase2) then
+	--[=[if (gMysqlDatabase1 ~= gMysqlDatabase2) then
 	local outsourcedAccounts = 0
 	local cur = getSecTime ( - ( 3 * 24 ) )
 	local result = mysql_query ( handler, "SELECT * FROM players")
@@ -176,27 +176,20 @@ function outSourceAccounts ()
 	if result then
 		mysql_free_result ( result )
 	end
-	end
+	end]=]
 end
 outSourceAccounts ()
 
 function newpw_func ( player, cmd, newPW, newPWCheck )
 
-	local pname = MySQL_Save ( getPlayerName ( player ) )
+	local pname = getPlayerName ( player )
 	if vioGetElementData ( player, "loggedin" ) == 1 then
 		if newPW and newPWCheck then
 			if newPW and newPWCheck then
-				newPW = MySQL_Save ( newPW )
-				newPWCheck = MySQL_Save ( newPWCheck )
 				if newPWCheck == newPW then
-					local sucess = MySQL_GetString("players", "Passwort", "Name LIKE '" ..pname.."'")
-					if sucess then
-						MySQL_SetString("players", "Passwort", md5 ( saltPassword ( pname, newPW ) ), "Name LIKE '" ..pname.."'")
-						outputChatBox ( "Passwort geaendert!", player, 0, 125, 0 )
-						outputLog ( getPlayerName ( player ).." ( IP: "..getPlayerIP ( player )..", Serial: "..getPlayerSerial ( player ).." ) hat sein Passwort geaendert.", "pwchange" )
-					else
-						outputChatBox ( "Ungueltiges Passwort!", player, 125, 0, 0 )
-					end
+					dbExec( handler, "UPDATE players SET Passwort = ? WHERE Name LIKE ?", md5 ( saltPassword ( pname, newPW ) ), pname )
+					outputChatBox ( "Passwort geaendert!", player, 0, 125, 0 )
+					outputLog ( getPlayerName ( player ).." ( IP: "..getPlayerIP ( player )..", Serial: "..getPlayerSerial ( player ).." ) hat sein Passwort geaendert.", "pwchange" )
 				else
 					outputChatBox ( "Die beiden Passwoerter muessen identisch sein!", player, 125, 0, 0 )
 				end

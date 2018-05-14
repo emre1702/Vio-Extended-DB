@@ -32,6 +32,66 @@
 end
 addEventHandler ( "onPickupHit", getRootElement(), housePickup )
 
+
+local function buyhouse_func_DB ( qh, player, zahlart, hause, pname )
+	local result = dbPoll( qh, 0 )
+	if not result or not result[1] then
+		if haus ~= "none" then
+			if tonumber(vioGetElementData ( player, "housekey" )) <= 0 then
+				local hauskosten = tonumber(vioGetElementData ( haus, "preis" ))
+				if zahlart == "bank" then
+					local hauskosten = hauskosten*1.02
+					if vioGetElementData ( player, "bankmoney" ) >= hauskosten then
+						MySQL_SetString("houses", "Besitzer", pname, "ID LIKE '"..vioGetElementData ( haus, "id" ).."'")
+						
+						vioSetElementData ( player, "bankmoney", vioGetElementData ( player, "bankmoney" ) - hauskosten )
+						
+						triggerClientEvent ( player, "createNewStatementEntry", player, "Hauskauf", hauskosten * - 1, "\n" )
+						
+						vioSetElementData ( player, "housekey", vioGetElementData ( haus, "id" ) )
+						vioSetElementData ( haus, "owner", pname )
+						setElementModel ( haus, 1272 )
+						
+						datasave_remote(player)
+						
+						triggerClientEvent ( player, "infobox_start", getRootElement(), "Glueckwunsch,\ndu hast das Haus\ngekauft!Fuer\nmehr Infos, oeffne\ndas Hilfemenue!", 10000, 125, 0, 0 )
+						triggerClientEvent ( player, "achievsound", getRootElement() )
+						outputLog ( getPlayerName ( player ).." hat ein Haus gekauft ( "..vioGetElementData ( haus, "id" ).." )", "house" )
+					else
+						triggerClientEvent ( player, "infobox_start", getRootElement(), "\n\nDu hast nicht\ngenug Geld auf\ndemKonto!", 5000, 125, 0, 0 )
+					end
+				else
+					if vioGetElementData ( player, "money" ) >= hauskosten then
+						MySQL_SetString("houses", "Besitzer", pname, "ID LIKE '"..vioGetElementData ( haus, "id" ).."'")
+
+						vioSetElementData ( player, "money", vioGetElementData ( player, "money" ) - hauskosten )
+						takePlayerMoney ( player, hauskosten )
+						triggerClientEvent ( player, "HudEinblendenMoney", getRootElement() )
+						
+						vioSetElementData ( player, "housekey", vioGetElementData ( haus, "id" ) )
+						vioSetElementData ( haus, "owner", pname )
+						setElementModel ( haus, 1272 )
+						
+						datasave_remote(player)
+
+						triggerClientEvent ( player, "infobox_start", getRootElement(), "Glueckwunsch,\ndu hast das Haus\ngekauft!Fuer\nmehr Infos, oeffne\ndas Hilfemenue!", 10000, 125, 0, 0 )
+						triggerClientEvent ( player, "achievsound", getRootElement() )
+						
+						outputLog ( getPlayerName ( player ).." hat ein Haus gekauft ( "..vioGetElementData ( haus, "id" ).." )", "house" )
+					else
+						triggerClientEvent ( player, "infobox_start", getRootElement(), "\n\nDu hast nicht\ngenug Bargeld!", 5000, 125, 0, 0 )
+					end
+				end
+				MySQL_SetString("userdata", "Hausschluessel", vioGetElementData ( player, "housekey" ), dbPrepareString( handler, "Name LIKE ?", getPlayerName(player) ) )
+			else
+				triggerClientEvent ( player, "infobox_start", getRootElement(), "\n\nDu hast bereits\nein Haus!", 5000, 125, 0, 0 )
+			end
+		end
+	else
+		outputChatBox ( "Du ersteigerst momentan bereits ein Haus!", player, 0, 125, 0 )
+	end
+end
+
 function buyhouse_func ( player, cmd, zahlart )
 
 	if zahlart == "bank" or zahlart == "bar" then
@@ -46,61 +106,7 @@ function buyhouse_func ( player, cmd, zahlart )
 			if distance < 5 then
 				if vioGetElementData ( haus, "owner" ) == "none" then
 					if vioGetElementData ( player, "playingtime" )/60 > vioGetElementData ( haus, "mintime" ) then
-						if not MySQL_DatasetExist ( "buyit", "Hoechstbietender LIKE '"..pname.."' AND Typ LIKE 'Houses'" ) then
-							if haus ~= "none" then
-								if tonumber(vioGetElementData ( player, "housekey" )) <= 0 then
-									local hauskosten = tonumber(vioGetElementData ( haus, "preis" ))
-									if zahlart == "bank" then
-										local hauskosten = hauskosten*1.02
-										if vioGetElementData ( player, "bankmoney" ) >= hauskosten then
-											MySQL_SetString("houses", "Besitzer", pname, "ID LIKE '"..vioGetElementData ( haus, "id" ).."'")
-											
-											vioSetElementData ( player, "bankmoney", vioGetElementData ( player, "bankmoney" ) - hauskosten )
-											
-											triggerClientEvent ( player, "createNewStatementEntry", player, "Hauskauf", hauskosten * - 1, "\n" )
-											
-											vioSetElementData ( player, "housekey", vioGetElementData ( haus, "id" ) )
-											vioSetElementData ( haus, "owner", pname )
-											setElementModel ( haus, 1272 )
-											
-											datasave_remote(player)
-											
-											triggerClientEvent ( player, "infobox_start", getRootElement(), "Glueckwunsch,\ndu hast das Haus\ngekauft!Fuer\nmehr Infos, oeffne\ndas Hilfemenue!", 10000, 125, 0, 0 )
-											triggerClientEvent ( player, "achievsound", getRootElement() )
-											outputLog ( getPlayerName ( player ).." hat ein Haus gekauft ( "..vioGetElementData ( haus, "id" ).." )", "house" )
-										else
-											triggerClientEvent ( player, "infobox_start", getRootElement(), "\n\nDu hast nicht\ngenug Geld auf\ndemKonto!", 5000, 125, 0, 0 )
-										end
-									else
-										if vioGetElementData ( player, "money" ) >= hauskosten then
-											MySQL_SetString("houses", "Besitzer", pname, "ID LIKE '"..vioGetElementData ( haus, "id" ).."'")
-
-											vioSetElementData ( player, "money", vioGetElementData ( player, "money" ) - hauskosten )
-											takePlayerMoney ( player, hauskosten )
-											triggerClientEvent ( player, "HudEinblendenMoney", getRootElement() )
-											
-											vioSetElementData ( player, "housekey", vioGetElementData ( haus, "id" ) )
-											vioSetElementData ( haus, "owner", pname )
-											setElementModel ( haus, 1272 )
-											
-											datasave_remote(player)
-
-											triggerClientEvent ( player, "infobox_start", getRootElement(), "Glueckwunsch,\ndu hast das Haus\ngekauft!Fuer\nmehr Infos, oeffne\ndas Hilfemenue!", 10000, 125, 0, 0 )
-											triggerClientEvent ( player, "achievsound", getRootElement() )
-											
-											outputLog ( getPlayerName ( player ).." hat ein Haus gekauft ( "..vioGetElementData ( haus, "id" ).." )", "house" )
-										else
-											triggerClientEvent ( player, "infobox_start", getRootElement(), "\n\nDu hast nicht\ngenug Bargeld!", 5000, 125, 0, 0 )
-										end
-									end
-									MySQL_SetString("userdata", "Hausschluessel", vioGetElementData ( player, "housekey" ), "Name LIKE '"..getPlayerName(player).."'")
-								else
-									triggerClientEvent ( player, "infobox_start", getRootElement(), "\n\nDu hast bereits\nein Haus!", 5000, 125, 0, 0 )
-								end
-							end
-						else
-							outputChatBox ( "Du ersteigerst momentan bereits ein Haus!", player, 0, 125, 0 )
-						end
+						dbQuery( buyhouse_func_DB, { player, zahlart, haus, pname }, handler, "SELECT true FROM buyit WHERE Hoechstbietender LIKE ? AND Typ LIKE 'Houses'", pname )
 					else
 						triggerClientEvent ( player, "infobox_start", getRootElement(), "\n\nDu hast nicht\nlange genug\ngespielt!", 5000, 125, 0, 0 )
 					end

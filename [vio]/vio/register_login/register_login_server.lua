@@ -14,26 +14,24 @@ function banCheck ( nick, ip, uname, serial )
 	bool = false
 	connectCanceled = false
 	local i, j = string.find ( nick, "mtasa" )
-	if nick ~= MySQL_Save ( nick ) then
-		cancelEvent ( true, "Dein Nickname enthaelt unnoetige Zeichen" )
-		connectCanceled = true
-	elseif nick == "Player" then
+	if nick == "Player" then
 		cancelEvent ( true, "Bitte waehle einen Nickname ( Unter \"Settings\" )" )
 		connectCanceled = true
 	elseif i and j then
 		cancelEvent ( true, "Fuck you!" )
 		connectCanceled = true
 	else
-		local bantime = tonumber ( MySQL_GetString ( "ban", "STime", "Name LIKE '"..nick.."'" ) )
+		local result = dbPoll( dbQuery( handler, "SELECT * FROM ban WHERE Name LIKE ?", nick ), -1 )
+		local bantime = result and result[1] and tonumber( result[1]["STime"] ) or 0
 		if bantime then
 			bool = not ( bantime == 0 )
 		end
 		if bool and bantime then
 			if ( bantime - getTBanSecTime ( 0 ) ) < 0 then
-				MySQL_DelRow ( "ban", "Name LIKE '"..nick.."'")
+				dbExec( handler, "DELETE FROM ban WHERE Name LIKE ?", nick )
 			elseif bantime > 0 then
-				local reason = MySQL_GetString ( "ban", "Grund", "Name LIKE '"..nick.."'" )
-				local admin = MySQL_GetString ( "ban", "Admin", "Name LIKE '"..nick.."'" )
+				local reason = result[1]["Grund"]
+				local admin = result[1]["Admin"]
 				local diff = math.floor ( ( ( bantime - getTBanSecTime ( 0 ) ) / 60 ) * 100 ) / 100
 				cancelEvent ( true, "Du bist noch "..diff.." Stunden von "..admin.." gesperrt, Grund: "..reason )
 				connectCanceled = true
@@ -46,30 +44,28 @@ function banCheck ( nick, ip, uname, serial )
 			
 			local ip1 = tostring ( gettok ( ip, 1, string.byte('.') ) )
 			local ip2 = tostring ( gettok ( ip, 2, string.byte('.') ) )
-			local ipRangeBanned = MySQL_GetString ( "ban", "Grund", "IP LIKE '"..ip1.."."..ip2..".*.*'" )
+			local ipRangeResult = dbPoll( dbQuery( handler, "SELECT * FROM ban WHERE IP LIKE ?", ip1.."."..ip..".*.*" ), -1 )
 			
-			local nickBanned = MySQL_GetString("ban", "Name", "Name LIKE '" ..nick.."'" )
+			local nickBannedResult = dbPoll( dbQuery( handler, "SELECT * FROM ban WHERE Name LIKE ?", nick ), -1 ) 
 			
-			if ipBanned then
-				local reason = MySQL_GetString ( "ban", "Grund", "IP LIKE '" ..ip.."'" )
-				local admin = MySQL_GetString ( "ban", "Admin", "IP LIKE '" ..ip.."'" )
+			if ipBanned and ipRangeResult and ipRangeResult[1] then
+				local reason = ipRangeResult[1]["Grund"]
+				local admin = ipRangeResult[1]["Admin"]
 				cancelEvent ( true, "Du bist von "..admin.." gebannt worden! Grund: "..reason..", bei Fragen wende dich bitte an das Forum!" )
 				connectCanceled = true
-			elseif ipRangeBanned then
-				cancelEvent ( true, "#409: Bad socket!" )
-			elseif nickBanned then
-				local reason = MySQL_GetString ( "ban", "Grund", "Name LIKE '" ..nick.."'" )
-				local admin = MySQL_GetString ( "ban", "Admin", "Name LIKE '" ..nick.."'" )
+			elseif nickBannedResult and nickBannedResult[1] then
+				local reason = nickBannedResult[1]["Grund"]
+				local admin = nickBannedResult[1]["Admin"]
 				cancelEvent ( true, "Du bist von "..admin.." gebannt worden! Grund: "..reason..", bei Fragen wende dich bitte an das Forum!" )
 				connectCanceled = true
 			elseif getPlayerWarnCount ( nick ) >= 3 then
 				cancelEvent ( true, "Du hast 3 Warns! Ablaufdatum des nächsten Warns: "..getLowestWarnExtensionTime ( nick ) )
 				connectCanceled = true
 			else
-				local serialBanned = MySQL_GetString ( "ban", "Grund", "Serial LIKE '%"..serial.."%'" )
-				if serialBanned then
-					local reason = MySQL_GetString ( "ban", "Grund", "Serial LIKE '"..serial.."'" )
-					local admin = MySQL_GetString ( "ban", "Admin", "Serial LIKE '"..serial.."'" )
+				local serialBannedResult = dbPoll( dbQuery( handler, "SELECT * FROM ban WHERE Serial LIKE ?", "%"..serial.."%" ), -1 ) 
+				if serialBannedResult and serialBannedResult[1] then
+					local reason = serialBannedResult[1]["Grund"]
+					local admin = serialBannedResult[1]["Admin"]
 					cancelEvent ( true, "Du bist von "..admin.." gebannt worden! Grund: "..reason..", bei Fragen wende dich bitte an das Forum!" )
 					connectCanceled = true
 				end
@@ -82,9 +78,7 @@ function banCheck ( nick, ip, uname, serial )
 end
 addEventHandler ( "onPlayerConnect", getRootElement(), banCheck )
 
-function saltPassword ( pname, string )
-
-	local salt = MySQL_GetString("players", "Salt", "Name LIKE '" ..MySQL_Save(pname).."'")
+function saltPassword ( salt, string )
 	return string..salt
 end
 
@@ -97,9 +91,7 @@ function generateNewSalt ()
 		for i = 1, 20 do
 			salt = salt .. string.char ( math.random(1,128) )
 		end
-		if salt == MySQL_Save ( salt ) then
-			break
-		end
+		break
 	end
 	return salt
 end
@@ -149,321 +141,298 @@ end
 addEvent ( "regcheck", true )
 addEventHandler ("regcheck", getRootElement(), regcheck_func )
 
-function getIDByName ( pname )
 
-	return tonumber ( MySQL_GetString ( "players", "id", "Name LIKE '"..pname.."'" ) )
+function register_func_telefon_DB ( qh, player, run, tnr )
+	local result = dbPoll( qh, 0 )
+	if result and result[1] and tnr ~= 911 and tnr ~= 333 and tnr ~= 400 and tnr ~= 666666 then
+		vioSetElementData ( player, "telenr", tnr )
+	else 
+		if run >= 30 then
+			vioSetElementData ( player, "telenr", math.random ( 9999999, 999999999999999 ) )
+			return
+		end
+		tnr = math.random ( 100, 9999999 )
+		dbQuery( register_func_telefon_DB, { player, run + 1, tnr }, handler, "SELECT Telefonnr FROM userdata WHERE Telefonnr LIKE ?", tnr )
+	end	
 end
+
 
 function register_func ( player, passwort, bday, bmon, byear, geschlecht )
 
 	if player == client then
-		local pname = MySQL_Save ( getPlayerName ( player ) )
-		if passwort == MySQL_Save ( passwort ) then
-			passwort = MySQL_Save ( passwort )
-			bday = MySQL_Save ( bday )
-			bmon = MySQL_Save ( bmon )
-			byear = MySQL_Save ( byear )
-			geschlecht = MySQL_Save ( geschlecht )
-			if vioGetElementData ( player, "loggedin" ) == 0 and not isRegistered ( pname ) and player == client then
-				setPlayerLoggedIn ( pname )
-				
-				mysql_vio_query ( "DELETE FROM achievments WHERE Name = '"..pname.."'" )
-				mysql_vio_query ( "DELETE FROM bonustable WHERE Name = '"..pname.."'" )
-				mysql_vio_query ( "DELETE FROM inventar WHERE Name = '"..pname.."'" )
-				mysql_vio_query ( "DELETE FROM packages WHERE Name = '"..pname.."'" )
-				mysql_vio_query ( "DELETE FROM players WHERE Name = '"..pname.."'" )
-				mysql_vio_query ( "DELETE FROM skills WHERE Name = '"..pname.."'" )
-				mysql_vio_query ( "DELETE FROM userdata WHERE Name = '"..pname.."'" )
-				
-				toggleAllControls ( player, true )
-				vioSetElementData ( player, "loggedin", 1 )
+		local pname = getPlayerName ( player )
+		if vioGetElementData ( player, "loggedin" ) == 0 and not isRegistered ( pname ) and player == client then
+			setPlayerLoggedIn ( pname )
+			
+			dbExec( handler, "DELETE FROM achievments WHERE Name = ?", pname )
+			dbExec( handler, "DELETE FROM bonustable WHERE Name = ?", pname )
+			dbExec( handler, "DELETE FROM inventar WHERE Name = ?", pname )
+			dbExec( handler, "DELETE FROM packages WHERE Name = ?", pname )
+			dbExec( handler, "DELETE FROM players WHERE Name = ?", pname )
+			dbExec( handler, "DELETE FROM skills WHERE Name = ?", pname )
+			dbExec( handler, "DELETE FROM userdata WHERE Name = ?", pname )
+			
+			toggleAllControls ( player, true )
+			vioSetElementData ( player, "loggedin", 1 )
 
-				triggerClientEvent ( source, "DisableRegisterGui", getRootElement() )
+			triggerClientEvent ( source, "DisableRegisterGui", getRootElement() )
 
-				local ip = getPlayerIP ( player )
-				
-				if geschlecht == nil then
-					geschlecht = 1
-				end
-				
-				local regtime = getRealTime()
-				local year = regtime.year + 1900
-				local month = regtime.month
-				local day = regtime.monthday
-				local hour = regtime.hour
-				local minute = regtime.minute
-				
-				local registerdatum = tostring(day.."."..month.."."..year..", "..hour..":"..minute)
-				local lastlogin = registerdatum
-				
-				local salt = generateNewSalt ()
-				vioSetElementData ( player, "salt", salt )
-				
-				local passwort = md5 ( passwort .. salt )
-				local lastLoginInt = getSecTime ( 0 )
-				
-				local id = MySQL_GetString ( "idcounter", "id", "id = id" )
-				mysql_vio_query ( "UPDATE idcounter SET id = id + 1" )
-				
-				local result = mysql_query(handler, "INSERT INTO players ( id, Name, Serial, IP, Last_login, Geburtsdatum_Tag, Geburtsdatum_Monat, Geburtsdatum_Jahr, Passwort, Geschlecht, RegisterDatum, Salt, LastLogin) VALUES ( '"..id.."', '"..pname.."', '"..getPlayerSerial(player).."', '"..getPlayerIP ( player ).."', '"..lastlogin.."', "..tonumber ( bday)..", "..tonumber ( bmon)..", "..tonumber ( byear)..", '"..passwort.."', '"..geschlecht.."', '"..registerdatum.."', '"..salt.."', '"..lastLoginInt.."' )")
-				if( not result) then
-					outputDebugString("Error executing the query: ("		.. mysql_errno(handler) .. ") " .. mysql_error(handler))
-				else
-					mysql_free_result(result)
-					triggerClientEvent ( player, "infobox_start", getRootElement(), "Du hast dich\nerfolgreich registriert!\n\nDeine Daten werden\nnun gespeichert!", 7500, 0, 255, 0 )
-				end
-				
-				local result = mysql_query(handler, "INSERT INTO achievments (Name) VALUES ('"..pname.."')")
-				if( not result) then
-					outputDebugString("Error executing the query: ("		.. mysql_errno(handler) .. ") " .. mysql_error(handler))
-				else
-					mysql_free_result(result)
-				end
-				local result = mysql_query(handler, "INSERT INTO inventar (Name) VALUES ('"..pname.."')")
-				if( not result) then
-					outputDebugString("Error executing the query: ("		.. mysql_errno(handler) .. ") " .. mysql_error(handler))
-				else
-					mysql_free_result(result)
-				end
-				local result = mysql_query(handler, "INSERT INTO packages (Name, Paket1, Paket2, Paket3, Paket4, Paket5, Paket6, Paket7, Paket8, Paket9, Paket10, Paket11, Paket12, Paket13, Paket14, Paket15, Paket16, Paket17, Paket18, Paket19, Paket20, Paket21, Paket22, Paket23, Paket24, Paket25) VALUES ('"..pname.."','0','0','0','0','0','0','0','0','0','0','0','0','0','0','0','0','0','0','0','0','0','0','0','0','0' )")
-				if( not result) then
-					outputDebugString("Error executing the query: ("		.. mysql_errno(handler) .. ") " .. mysql_error(handler))
-				else
-					mysql_free_result(result)
-				end
-				local result = mysql_query(handler, "INSERT INTO bonustable (Name, Lungenvolumen, Muskeln, Kondition, Boxen, KungFu, Streetfighting, CurStyle, PistolenSkill, DeagleSkill, ShotgunSkill, AssaultSkill) VALUES ('"..pname.."', 'none', 'none', 'none', 'none', 'none', 'none', '4', 'none', 'none', 'none', 'none' )")
-				if( not result) then
-					outputDebugString("Error executing the query: ("		.. mysql_errno(handler) .. ") " .. mysql_error(handler))
-				else
-					mysql_free_result(result)
-				end
-				mysql_vio_query ( "INSERT INTO skills ( id, Name ) VALUES ( '"..getIDByName ( pname ).."', '"..pname.."' )" )
-				
-				local Geld = 350
-				vioSetElementData ( player, "money", Geld )
-				givePlayerMoney ( player, Geld )
-				local Punkte = 0
-				vioSetElementData ( player, "points", Punkte )
-				local Paeckchen = "90000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
-				vioSetElementData ( player, "packages", Paeckchen )
-				local Spawnpos_X = -2458.288085
-				vioSetElementData ( player, "spawnpos_x", Spawnpos_X )
-				local Spawnpos_Y = 774.354492
-				vioSetElementData ( player, "spawnpos_y", Spawnpos_Y )
-				local Spawnpos_Z = 35.171875
-				vioSetElementData ( player, "spawnpos_z", Spawnpos_Z )
-				local Spawnrot_X = 52.94
-				vioSetElementData ( player, "spawnrot_x", Spawnrot_X )
-				local SpawnInterior = 0
-				vioSetElementData ( player, "spawnint", SpawnInterior )
-				local SpawnDimension = 0
-				vioSetElementData ( player, "spawndim", SpawnDimension )
-				local Fraktion = 0
-				vioSetElementData ( player, "fraktion", Fraktion )
-				local FraktionsRang = 0
-				vioSetElementData ( player, "rang", FraktionsRang )
-				local Adminlevel = 0
-				vioSetElementData ( player, "adminlvl", Adminlevel )
-				local Spielzeit = 0
-				vioSetElementData ( player, "playingtime", Spielzeit )
-				local CurrentCars = 0
-				vioSetElementData ( player, "curcars", CurrentCars )
-				local Maximumcars = 3
-				vioSetElementData ( player, "maxcars", Maximumcars )
-				local Carslot1 = 0
-				vioSetElementData ( player, "carslot1", Carslot1 )
-				local Carslot2 = 0
-				vioSetElementData ( player, "carslot2", Carslot2 )
-				local Carslot3 = 0
-				vioSetElementData ( player, "carslot3", Carslot3 )
-				local Carslot4 = 0
-				vioSetElementData ( player, "carslot4", Carslot4 )
-				local Carslot5 = 0
-				vioSetElementData ( player, "carslot5", Carslot5 )
-				local Carslot6 = 0
-				vioSetElementData ( player, "carslot6", Carslot6 )
-				local Carslot7 = 0
-				vioSetElementData ( player, "carslot7", Carslot7 )
-				local Carslot8 = 0
-				vioSetElementData ( player, "carslot8", Carslot8 )
-				local Carslot9 = 0
-				vioSetElementData ( player, "carslot9", Carslot9 )
-				local Carslot10 = 0
-				vioSetElementData ( player, "carslot10", Carslot10 )
-				local Tode = 0
-				vioSetElementData ( player, "deaths", Tode )
-				local Kills = 0
-				vioSetElementData ( player, "kills", Kills )
-				local Knastzeit = 0
-				vioSetElementData ( player, "jailtime", Knastzeit )
-				local Alkazeit = 0
-				vioSetElementData ( player, "prisontime", Alkazeit )
-				local Hoellenzeit = 0
-				vioSetElementData ( player, "helltime", Hoellenzeit )
-				local Himmelszeit = 0
-				vioSetElementData ( player, "heaventime", Himmelszeit )
-				local Hausschluessel = 0
-				vioSetElementData ( player, "housekey", 0 )
-				local Bizschluessel = 0
-				vioSetElementData ( player, "bizkey", Bizschluessel )
-				local Bankgeld = 1500
-				vioSetElementData ( player, "bankmoney", Bankgeld )
-				local Drogen  = 0
-				vioSetElementData ( player, "drugs", Drogen )
-				if geschlecht == 1 then
-					local rnd = math.random ( 1, 1 )
-					Skinid = femalehomeless[rnd]
-					vioSetElementData ( player, "skinid", Skinid )
-				else
-					local rnd = math.random ( 1, 5 )
-					Skinid = malehomeless[rnd]
-					vioSetElementData ( player, "skinid", Skinid )
-				end
-				local Autofuehrerschein = 0
-				vioSetElementData ( player, "carlicense", Autofuehrerschein )
-				local Motorradtfuehrerschein = 0
-				vioSetElementData ( player, "bikelicense", Motorradtfuehrerschein )
-				local LKWfuehrerschein = 0
-				vioSetElementData ( player, "lkwlicense", LKWfuehrerschein )
-				local Helikopterfuehrerschein = 0
-				vioSetElementData ( player, "helilicense", Helikopterfuehrerschein )
-				local FlugscheinKlasseA = 0
-				vioSetElementData ( player, "planelicensea", FlugscheinKlasseA )
-				local FlugscheinKlasseB = 0
-				vioSetElementData ( player, "planelicenseb", FlugscheinKlasseB )
-				local Motorbootschein = 0
-				vioSetElementData ( player, "motorbootlicense", Motorbootschein )
-				local Segelschein = 0
-				vioSetElementData ( player, "segellicense", Segelschein)
-				local Angelschein = 0
-				vioSetElementData ( player, "fishinglicense", Angelschein)
-				local Wanteds = 0
-				vioSetElementData ( player, "wanteds", Wanteds )
-				local StvoPunkte = 0
-				vioSetElementData ( player, "stvo_punkte", StvoPunkte )
-				local Waffenschein = 0
-				vioSetElementData ( player, "gunlicense", Waffenschein )
-				local Perso = 0
-				vioSetElementData ( player, "perso", Perso )
-				local IncomePayday = 0
-				vioSetElementData ( player, "incomepayday", IncomePayday )
-				local Boni = 1000
-				vioSetElementData ( player, "boni", Boni )
-				local PdayIncome = 0
-				vioSetElementData ( player, "pdayincome", PdayIncome )
-				local PdayKosten = 0
-				vioSetElementData ( player, "pdaykosten", PdayKosten )
-				run = 1
-				while true do
-					if run >= 20 then
-						break
-					else
-						run = run + 1
-					end
-					local tnr = math.random ( 100, 9999999 )
-					local result = MySQL_GetString( "userdata", "Telefonnr", "Telefonnr LIKE '"..tnr.."'" )
-					if not result then
-						if tonumber ( tnr ) ~= 911 and tonumber ( tnr ) ~= 333 and tonumber ( tnr ) ~= 400 and tonumber (tnr ) ~= 666666 then
-							Telefonnr = tnr
-							break
-						end
-					end
-				end
-				if Telefonnr == nil then
-					Telefonnr = math.random ( 100, 9999999 )
-				end
-				vioSetElementData ( player, "telenr", Telefonnr )
-				local Warns = 0
-				vioSetElementData ( player, "warns", Warns )
-				local GunboxA = "0|0"
-				vioSetElementData ( player, "gunboxa", GunboxA )
-				local GunboxB = "0|0"
-				vioSetElementData ( player, "gunboxb", GunboxB )
-				local GunboxC = "0|0"
-				vioSetElementData ( player, "gunboxc", GunboxC )
-				local Job = "none"
-				vioSetElementData ( player, "job", Job )
-				local Jobtime = 0
-				vioSetElementData ( player, "jobtime", Jobtime )
-				local Club = "none"
-				vioSetElementData ( player, "club", Club )
-				local FavChannel = 0
-				vioSetElementData ( player, "favchannel", FavChannel )
-				local BonusPunkte = 0
-				vioSetElementData ( player, "bonuspoints", BonusPunkte )
-				local Truckerskill = 1
-				vioSetElementData ( player, "truckerlvl", Truckerskill )
-				local Airportskill = 1
-				vioSetElementData ( player, "airportlvl", Airportskill )		
-				local farmerLVL = 0
-				vioSetElementData ( player, "farmerLVL", farmerLVL )
-				local Contract = 0
-				vioSetElementData ( player, "contract", Contract )
-				local socialState = "Obdachloser"
-				vioSetElementData ( player, "socialState", socialState )
-				local streetCleanPoints = 0
-				vioSetElementData ( player, "streetCleanPoints", streetCleanPoints )
-				
-				vioSetElementData ( player, "handyType", 1 )
-				vioSetElementData ( player, "handyCosts", 0 )
-				
-				_G[pname.."paydaytime"] = setTimer ( playingtime, 60000, 1, player )
-				
-				vioSetElementData  ( player, "loggedin", 1 )
-				vioSetElementData ( player, "muted", 0 )
-				vioSetElementData ( player, "ElementClicked", false )
-				vioSetElementData ( player, "curplayingtime", 0 )
-				vioSetElementData ( player, "housex", 0 )
-				vioSetElementData ( player, "housey", 0 )
-				vioSetElementData ( player, "housez", 0 )
-				vioSetElementData ( player, "house", "none" )
-				vioSetElementData ( player, "handystate", "on" )
-				vioSetElementData ( player, "object", 0 )
-				vioSetElementData ( player, "ammoTyp", 0 )
-				vioSetElementData ( player, "curAmmoTyp", 0 )
-
-				bindKey ( source, "r", "down", reload )
-				
-				triggerClientEvent ( player, "sec_health_give", getRootElement(), 999 )
-				spawnPlayer ( player, vioGetElementData ( player, "spawnpos_z" ), vioGetElementData ( player, "spawnpos_y" ), vioGetElementData ( player, "spawnpos_z" ), vioGetElementData ( player, "spawnrot_x" ), vioGetElementData ( player, "spawnint" ), vioGetElementData ( player, "spawndim" ) )
-				triggerClientEvent ( player, "sec_health_give", getRootElement(), 999 )
-							
-				isPremium ( player )
-				
-				--fadeCamera ( player, true )
-				--setCameraTarget( player, player )
-				
-				setPlayerWantedLevel ( player, Wanteds )
-				
-				packageLoad ( player )
-				achievload ( player )
-				inventoryload ( player )
-				elementDataSettings ( player )
-				bonusLoad ( player )
-				skillDataLoad ( player )
-
-				local result = mysql_query(handler, "INSERT INTO userdata ( Name,Skinid,Telefonnr) VALUES('"..pname.."', '"..vioGetElementData ( player, "skinid" ).."', '"..Telefonnr.."')")
-				if( not result) then
-					outputDebugString("Error executing the query: ("		.. mysql_errno(handler) .. ") " .. mysql_error(handler))
-				else
-					mysql_free_result(result)
-					outputDebugString ("Daten fuer Spieler "..pname.." wurden angelegt!")
-				end
-				outputChatBox ( "Druecke F1, um das Hilfemenue zu oeffnen!", player, 200, 200, 0 )
-				
-				vioSetElementData ( player, "gameboy", 0 )
-				
-				loadAddictionsForPlayer ( player )
-				
-				-- Tutorial --
-				vioSetElementData ( player, "isInTut", true )
-				--triggerClientEvent ( player, "setPlayerInTutorial", player )
-				startintro_func ( player )
-				
-				triggerEvent ( "onVioPlayerLogin", player )
+			local ip = getPlayerIP ( player )
+			
+			if geschlecht == nil then
+				geschlecht = 1
 			end
-		else
-			outputChatBox ( "Dein Passwort enthaelt ungueltige Sonderzeichen!", player, 125, 0, 0 )
+			
+			local regtime = getRealTime()
+			local year = regtime.year + 1900
+			local month = regtime.month
+			local day = regtime.monthday
+			local hour = regtime.hour
+			local minute = regtime.minute
+			
+			local registerdatum = tostring(day.."."..month.."."..year..", "..hour..":"..minute)
+			local lastlogin = registerdatum
+			
+			local salt = generateNewSalt ()
+			vioSetElementData ( player, "salt", salt )
+			
+			local passwort = md5 ( passwort .. salt )
+			local lastLoginInt = getSecTime ( 0 )
+			
+			local id = dbPoll( dbQuery( handler, "SELECT id FROM idcounter" ), -1 )
+			vioSetElementData ( player, "playerid", tonumber( id[1]["id"] ) )
+			dbExec( handler, "UPDATE idcounter SET id = id + 1" )
+			
+			local result = dbExec(handler, "INSERT INTO players ( id, Name, Serial, IP, Last_login, Geburtsdatum_Tag, Geburtsdatum_Monat, Geburtsdatum_Jahr, Passwort, Geschlecht, RegisterDatum, Salt, LastLogin) VALUES ( '"..id.."', ?, ?, , '"..lastlogin.."', "..tonumber ( bday)..", "..tonumber ( bmon)..", "..tonumber ( byear)..", ?, ?, '"..registerdatum.."', '"..salt.."', '"..lastLoginInt.."' )", pname, getPlayerSerial( player ), getPlayerIP( player ), passwort, geschlecht )
+			if( not result) then
+				outputDebugString("Error executing the query players at register" )
+			else
+				triggerClientEvent ( player, "infobox_start", getRootElement(), "Du hast dich\nerfolgreich registriert!\n\nDeine Daten werden\nnun gespeichert!", 7500, 0, 255, 0 )
+			end
+			
+			local result = dbExec(handler, "INSERT INTO achievments (Name) VALUES (?)", pname )
+			if( not result) then
+				outputDebugString("Error executing the query achievments at register")
+			end
+			local result = dbExec(handler, "INSERT INTO inventar (Name) VALUES (?)", pname)
+			if( not result) then
+				outputDebugString("Error executing the query inventar at register")
+			end
+			local result = dbExec(handler, "INSERT INTO packages (Name, Paket1, Paket2, Paket3, Paket4, Paket5, Paket6, Paket7, Paket8, Paket9, Paket10, Paket11, Paket12, Paket13, Paket14, Paket15, Paket16, Paket17, Paket18, Paket19, Paket20, Paket21, Paket22, Paket23, Paket24, Paket25) VALUES (?,'0','0','0','0','0','0','0','0','0','0','0','0','0','0','0','0','0','0','0','0','0','0','0','0','0' )", pname)
+			if( not result) then
+				outputDebugString("Error executing the query packages at register")
+			end
+			local result = dbExec(handler, "INSERT INTO bonustable (Name, Lungenvolumen, Muskeln, Kondition, Boxen, KungFu, Streetfighting, CurStyle, PistolenSkill, DeagleSkill, ShotgunSkill, AssaultSkill) VALUES (?, 'none', 'none', 'none', 'none', 'none', 'none', '4', 'none', 'none', 'none', 'none' )", pname)
+			if( not result) then
+				outputDebugString("Error executing the query bonustable at register")
+			end
+			dbExec( handler, "INSERT INTO skills ( id, Name ) VALUES ( '"..id.."', ? )", pname )
+			
+			local Geld = 350
+			vioSetElementData ( player, "money", Geld )
+			givePlayerMoney ( player, Geld )
+			local Punkte = 0
+			vioSetElementData ( player, "points", Punkte )
+			local Paeckchen = "90000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+			vioSetElementData ( player, "packages", Paeckchen )
+			local Spawnpos_X = -2458.288085
+			vioSetElementData ( player, "spawnpos_x", Spawnpos_X )
+			local Spawnpos_Y = 774.354492
+			vioSetElementData ( player, "spawnpos_y", Spawnpos_Y )
+			local Spawnpos_Z = 35.171875
+			vioSetElementData ( player, "spawnpos_z", Spawnpos_Z )
+			local Spawnrot_X = 52.94
+			vioSetElementData ( player, "spawnrot_x", Spawnrot_X )
+			local SpawnInterior = 0
+			vioSetElementData ( player, "spawnint", SpawnInterior )
+			local SpawnDimension = 0
+			vioSetElementData ( player, "spawndim", SpawnDimension )
+			local Fraktion = 0
+			vioSetElementData ( player, "fraktion", Fraktion )
+			local FraktionsRang = 0
+			vioSetElementData ( player, "rang", FraktionsRang )
+			local Adminlevel = 0
+			vioSetElementData ( player, "adminlvl", Adminlevel )
+			local Spielzeit = 0
+			vioSetElementData ( player, "playingtime", Spielzeit )
+			local CurrentCars = 0
+			vioSetElementData ( player, "curcars", CurrentCars )
+			local Maximumcars = 3
+			vioSetElementData ( player, "maxcars", Maximumcars )
+			local Carslot1 = 0
+			vioSetElementData ( player, "carslot1", Carslot1 )
+			local Carslot2 = 0
+			vioSetElementData ( player, "carslot2", Carslot2 )
+			local Carslot3 = 0
+			vioSetElementData ( player, "carslot3", Carslot3 )
+			local Carslot4 = 0
+			vioSetElementData ( player, "carslot4", Carslot4 )
+			local Carslot5 = 0
+			vioSetElementData ( player, "carslot5", Carslot5 )
+			local Carslot6 = 0
+			vioSetElementData ( player, "carslot6", Carslot6 )
+			local Carslot7 = 0
+			vioSetElementData ( player, "carslot7", Carslot7 )
+			local Carslot8 = 0
+			vioSetElementData ( player, "carslot8", Carslot8 )
+			local Carslot9 = 0
+			vioSetElementData ( player, "carslot9", Carslot9 )
+			local Carslot10 = 0
+			vioSetElementData ( player, "carslot10", Carslot10 )
+			local Tode = 0
+			vioSetElementData ( player, "deaths", Tode )
+			local Kills = 0
+			vioSetElementData ( player, "kills", Kills )
+			local Knastzeit = 0
+			vioSetElementData ( player, "jailtime", Knastzeit )
+			local Alkazeit = 0
+			vioSetElementData ( player, "prisontime", Alkazeit )
+			local Hoellenzeit = 0
+			vioSetElementData ( player, "helltime", Hoellenzeit )
+			local Himmelszeit = 0
+			vioSetElementData ( player, "heaventime", Himmelszeit )
+			local Hausschluessel = 0
+			vioSetElementData ( player, "housekey", 0 )
+			local Bizschluessel = 0
+			vioSetElementData ( player, "bizkey", Bizschluessel )
+			local Bankgeld = 1500
+			vioSetElementData ( player, "bankmoney", Bankgeld )
+			local Drogen  = 0
+			vioSetElementData ( player, "drugs", Drogen )
+			if geschlecht == 1 then
+				local rnd = math.random ( 1, 1 )
+				Skinid = femalehomeless[rnd]
+				vioSetElementData ( player, "skinid", Skinid )
+			else
+				local rnd = math.random ( 1, 5 )
+				Skinid = malehomeless[rnd]
+				vioSetElementData ( player, "skinid", Skinid )
+			end
+			local Autofuehrerschein = 0
+			vioSetElementData ( player, "carlicense", Autofuehrerschein )
+			local Motorradtfuehrerschein = 0
+			vioSetElementData ( player, "bikelicense", Motorradtfuehrerschein )
+			local LKWfuehrerschein = 0
+			vioSetElementData ( player, "lkwlicense", LKWfuehrerschein )
+			local Helikopterfuehrerschein = 0
+			vioSetElementData ( player, "helilicense", Helikopterfuehrerschein )
+			local FlugscheinKlasseA = 0
+			vioSetElementData ( player, "planelicensea", FlugscheinKlasseA )
+			local FlugscheinKlasseB = 0
+			vioSetElementData ( player, "planelicenseb", FlugscheinKlasseB )
+			local Motorbootschein = 0
+			vioSetElementData ( player, "motorbootlicense", Motorbootschein )
+			local Segelschein = 0
+			vioSetElementData ( player, "segellicense", Segelschein)
+			local Angelschein = 0
+			vioSetElementData ( player, "fishinglicense", Angelschein)
+			local Wanteds = 0
+			vioSetElementData ( player, "wanteds", Wanteds )
+			local StvoPunkte = 0
+			vioSetElementData ( player, "stvo_punkte", StvoPunkte )
+			local Waffenschein = 0
+			vioSetElementData ( player, "gunlicense", Waffenschein )
+			local Perso = 0
+			vioSetElementData ( player, "perso", Perso )
+			local IncomePayday = 0
+			vioSetElementData ( player, "incomepayday", IncomePayday )
+			local Boni = 1000
+			vioSetElementData ( player, "boni", Boni )
+			local PdayIncome = 0
+			vioSetElementData ( player, "pdayincome", PdayIncome )
+			local PdayKosten = 0
+			vioSetElementData ( player, "pdaykosten", PdayKosten )
+
+			local tnr = math.random ( 100, 9999999 )
+			dbQuery( register_func_telefon_DB, { player, 1, tnr }, handler, "SELECT Telefonnr FROM userdata WHERE Telefonnr LIKE ?", tnr )
+
+			local Warns = 0
+			vioSetElementData ( player, "warns", Warns )
+			local GunboxA = "0|0"
+			vioSetElementData ( player, "gunboxa", GunboxA )
+			local GunboxB = "0|0"
+			vioSetElementData ( player, "gunboxb", GunboxB )
+			local GunboxC = "0|0"
+			vioSetElementData ( player, "gunboxc", GunboxC )
+			local Job = "none"
+			vioSetElementData ( player, "job", Job )
+			local Jobtime = 0
+			vioSetElementData ( player, "jobtime", Jobtime )
+			local Club = "none"
+			vioSetElementData ( player, "club", Club )
+			local FavChannel = 0
+			vioSetElementData ( player, "favchannel", FavChannel )
+			local BonusPunkte = 0
+			vioSetElementData ( player, "bonuspoints", BonusPunkte )
+			local Truckerskill = 1
+			vioSetElementData ( player, "truckerlvl", Truckerskill )
+			local Airportskill = 1
+			vioSetElementData ( player, "airportlvl", Airportskill )		
+			local farmerLVL = 0
+			vioSetElementData ( player, "farmerLVL", farmerLVL )
+			local Contract = 0
+			vioSetElementData ( player, "contract", Contract )
+			local socialState = "Obdachloser"
+			vioSetElementData ( player, "socialState", socialState )
+			local streetCleanPoints = 0
+			vioSetElementData ( player, "streetCleanPoints", streetCleanPoints )
+			
+			vioSetElementData ( player, "handyType", 1 )
+			vioSetElementData ( player, "handyCosts", 0 )
+			
+			_G[pname.."paydaytime"] = setTimer ( playingtime, 60000, 1, player )
+			
+			vioSetElementData  ( player, "loggedin", 1 )
+			vioSetElementData ( player, "muted", 0 )
+			vioSetElementData ( player, "ElementClicked", false )
+			vioSetElementData ( player, "curplayingtime", 0 )
+			vioSetElementData ( player, "housex", 0 )
+			vioSetElementData ( player, "housey", 0 )
+			vioSetElementData ( player, "housez", 0 )
+			vioSetElementData ( player, "house", "none" )
+			vioSetElementData ( player, "handystate", "on" )
+			vioSetElementData ( player, "object", 0 )
+			vioSetElementData ( player, "ammoTyp", 0 )
+			vioSetElementData ( player, "curAmmoTyp", 0 )
+
+			bindKey ( source, "r", "down", reload )
+			
+			triggerClientEvent ( player, "sec_health_give", getRootElement(), 999 )
+			spawnPlayer ( player, vioGetElementData ( player, "spawnpos_z" ), vioGetElementData ( player, "spawnpos_y" ), vioGetElementData ( player, "spawnpos_z" ), vioGetElementData ( player, "spawnrot_x" ), vioGetElementData ( player, "spawnint" ), vioGetElementData ( player, "spawndim" ) )
+			triggerClientEvent ( player, "sec_health_give", getRootElement(), 999 )
+						
+			isPremium ( player )
+			
+			--fadeCamera ( player, true )
+			--setCameraTarget( player, player )
+			
+			setPlayerWantedLevel ( player, Wanteds )
+			
+			packageLoad ( player )
+			achievload ( player )
+			inventoryload ( player )
+			elementDataSettings ( player )
+			bonusLoad ( player )
+			skillDataLoad ( player )
+
+			local result = dbExec(handler, "INSERT INTO userdata ( Name,Skinid,Telefonnr) VALUES(?, ?, ?)", pname, vioGetElementData( player, "skinid" ), vioGetElementData ( player, "telenr" ) )
+			if( not result) then
+				outputDebugString("Error executing the query userdata at register" )
+			else
+				outputDebugString ("Daten fuer Spieler "..pname.." wurden angelegt!")
+			end
+			outputChatBox ( "Druecke F1, um das Hilfemenue zu oeffnen!", player, 200, 200, 0 )
+			
+			vioSetElementData ( player, "gameboy", 0 )
+			
+			loadAddictionsForPlayer ( player )
+			
+			-- Tutorial --
+			vioSetElementData ( player, "isInTut", true )
+			--triggerClientEvent ( player, "setPlayerInTutorial", player )
+			startintro_func ( player )
+			
+			triggerEvent ( "onVioPlayerLogin", player )
 		end
 	end
 end
@@ -488,313 +457,342 @@ end
 addEvent ( "gameBeginGuiShow", true )
 addEventHandler ( "gameBeginGuiShow", getRootElement(), gameBeginGuiShow_func)
 
+local function login_func_ticketansweres_DB ( qh, player )
+	local result = dbPoll( qh, 0 )
+	if result and result[1] then
+		outputChatBox ( "Du hast eine Antwort auf deine Anfrage erhalten! Tippe /readticket, um sie zu lesen.", player, 0, 200, 0 )
+	end
+end
+
+local function login_func_vehicle_DB ( qh, player, pname )
+	local result = dbPoll( qh, 0 )
+	for i=1, 10 do
+		vioSetElementData ( player, "carslot"..i, 0 )
+	end
+	if result and result[1] then
+		for i=1, #result do
+			local slot = result[i]["Slot"]
+			local carvalue = result[i]["Special"]
+			if carvalue == 2 then
+				vioSetElementData( player, "yachtImBesitz", true )
+			elseif carvalue ~= 0 then
+				carvalue = 1
+			end 
+			vioSetElementData ( player, "carslot"..slot, carvalue )
+		end
+		vioSetElementData ( player, "curcars", #result )
+	end
+end
+
+local function login_func_house_DB ( qh, player, dsatzschluessel )
+	local result = dbPoll( qh, 0 )
+	if result and result[1] then
+		local Hausschluessel = result[1]["ID"]
+		local key = tonumber ( dsatzschluessel )
+		if Hausschluessel then
+			vioSetElementData ( player, "housekey", tonumber ( Hausschluessel ) )
+		elseif key <= 0 then
+			vioSetElementData ( player, "housekey", key )
+		else
+			vioSetElementData ( player, "housekey", 0 )
+		end
+	end
+end
+
+local function login_func_object_DB ( qh, player )
+	local result = dbPoll( qh, 0 )
+	if result and result[1] then
+		vioSetElementData ( player, "object", tonumber ( result[1]["Objekt"] ) )
+	end
+end
+
+local function login_func_logout_DB ( qh, player )
+	local result = dbPoll( qh, 0 )
+	if result and result[1] then
+		dbExec( handler, "DELETE FROM logout WHERE Name LIKE ?", pname ) 
+		local position = result[1]["Position"]
+		if position then
+			weapons = result[1]["Waffen"] 
+			for i = 1, 12 do
+				local wstring = gettok ( weapons, i, string.byte( '|' ) )
+				if wstring then
+					if wstring then
+						if #wstring >= 3 then
+							local weapon = tonumber ( gettok ( wstring, 1, string.byte( ',' ) ) )
+							local ammo = tonumber ( gettok ( wstring, 2, string.byte( ',' ) ) )
+							giveWeapon ( player, weapon, ammo, true )
+							triggerClientEvent ( player, "sec_gun_give", getRootElement(), weapon, ammo )
+						end
+					end
+				end
+			end
+			if position ~= "false" then
+				local x = tonumber ( gettok ( position, 1, string.byte( '|' ) ) )
+				local y = tonumber ( gettok ( position, 2, string.byte( '|' ) ) )
+				local z = tonumber ( gettok ( position, 3, string.byte( '|' ) ) )
+				local int = tonumber ( gettok ( position, 4, string.byte( '|' ) ) )
+				local dim = tonumber ( gettok ( position, 5, string.byte( '|' ) ) )
+				setTimer ( setElementInterior, 1000, 1, player, int )
+				setTimer ( setElementDimension, 1000, 1, player, dim )
+				setTimer ( setElementPosition, 1000, 1, player, x, y, z )
+			end
+		end
+	end 
+end
+
+local function login_func_DB2 ( qh, player, lastLoginInt, lastlogin )
+	local result = dbPoll( qh, 0 )
+	if result and result[1] then
+		local dsatz = result[1]
+		
+		local money = tonumber ( dsatz["Geld"] )
+		vioSetElementData ( player, "money", money )
+		if money >= 0 then
+			givePlayerMoney ( player, money )
+		else
+			takePlayerMoney ( player, money )
+		end
+		local fraktion = tonumber ( dsatz["Fraktion"] )
+		vioSetElementData ( player, "fraktion", fraktion )
+		if fraktion > 0 then
+			fraktionMembers[fraktion][player] = fraktion
+		end
+		local rang = tonumber ( dsatz["FraktionsRang"] )
+		if rang == 1 then
+			bindKey ( player, "1", "down", tazer_func, player )
+		end
+		vioSetElementData ( player, "rang", tonumber ( rang ) )
+		local admnlvl = tonumber ( dsatz["Adminlevel"] )
+		vioSetElementData ( player, "adminlvl", admnlvl )
+		if admnlvl >= 1 then
+			adminsIngame[player] = admnlvl
+		end
+		
+		vioSetElementData ( player, "spawnpos_x", dsatz["Spawnpos_X"] )
+		vioSetElementData ( player, "spawnpos_y", dsatz["Spawnpos_Y"] )
+		vioSetElementData ( player, "spawnpos_z", tonumber ( dsatz["Spawnpos_Z"] ) )
+		vioSetElementData ( player, "spawnrot_x", tonumber ( dsatz["Spawnrot_X"] ) )
+		vioSetElementData ( player, "spawnint", tonumber ( dsatz["SpawnInterior"] ) )
+		vioSetElementData ( player, "spawndim", tonumber ( dsatz["SpawnDimension"] ) )
+		vioSetElementData ( player, "playingtime", tonumber ( dsatz["Spielzeit"] ) )
+		vioSetElementData ( player, "curcars", tonumber ( dsatz["CurrentCars"] ) )
+		
+		dbQuery( login_func_vehicle_DB, { player, pname }, handler, "SELECT Special, Slot FROM vehicles WHERE Besitzer LIKE ?", pname )
+		
+		vioSetElementData ( player, "deaths", tonumber ( dsatz["Tode"] ) )
+		vioSetElementData ( player, "kills", tonumber ( dsatz["Kills"] ) )
+		vioSetElementData ( player, "jailtime", tonumber ( dsatz["Knastzeit"] ) )
+		vioSetElementData ( player, "heaventime", tonumber ( dsatz["Himmelszeit"] ) )
+		
+		dbQuery( login_func_house_DB, { player, dsatz["Hausschluessel"] }, handler, "SELECT ID FROM houses WHERE Besitzer LIKE ?", pname )
+
+		vioSetElementData ( player, "bizkey", tonumber ( dsatz["Bizschluessel"] ) )
+		vioSetElementData ( player, "bankmoney", tonumber ( dsatz["Bankgeld"] ) )
+		vioSetElementData ( player, "drugs", tonumber ( dsatz["Drogen"] ) )
+		vioSetElementData ( player, "skinid", tonumber ( dsatz["Skinid"] ) )
+		vioSetElementData ( player, "carlicense", tonumber ( dsatz["Autofuehrerschein"] ) )
+		vioSetElementData ( player, "bikelicense", tonumber ( dsatz["Motorradtfuehrerschein"] ) )
+		vioSetElementData ( player, "lkwlicense", tonumber ( dsatz["LKWfuehrerschein"] ) )
+		vioSetElementData ( player, "helilicense", tonumber ( dsatz["Helikopterfuehrerschein"] ) )
+		vioSetElementData ( player, "planelicensea", tonumber ( dsatz["FlugscheinKlasseA"] ) )
+		vioSetElementData ( player, "planelicenseb", tonumber ( dsatz["FlugscheinKlasseB"] ) )
+		vioSetElementData ( player, "motorbootlicense", tonumber ( dsatz["Motorbootschein"] ) )
+		vioSetElementData ( player, "segellicense", tonumber ( dsatz["Segelschein"] ) )
+		vioSetElementData ( player, "fishinglicense", tonumber ( dsatz["Angelschein"] ) )
+		vioSetElementData ( player, "wanteds", tonumber ( dsatz["Wanteds"] ) )
+		vioSetElementData ( player, "stvo_punkte", tonumber ( dsatz["StvoPunkte"] ) )
+		vioSetElementData ( player, "gunlicense", tonumber ( dsatz["Waffenschein"] ) )
+		vioSetElementData ( player, "perso", tonumber ( dsatz["Perso"] ) )
+		vioSetElementData ( player, "boni", tonumber ( dsatz["Boni"] ) )
+		vioSetElementData ( player, "incomepayday", tonumber ( dsatz["IncomePayday"] ) )
+		vioSetElementData ( player, "pdayincome", tonumber ( dsatz["PdayIncome"] ) )
+		vioSetElementData ( player, "pdaykosten", tonumber ( dsatz["PdayKosten"] ) )
+		vioSetElementData ( player, "telenr", tonumber ( dsatz["Telefonnr"] ) )
+		vioSetElementData ( player, "warns", getPlayerWarnCount ( pname ) )
+		vioSetElementData ( player, "gunboxa", dsatz["Gunbox1"] )
+		vioSetElementData ( player, "gunboxb", dsatz["Gunbox2"] )
+		vioSetElementData ( player, "gunboxc", dsatz["Gunbox3"] )
+		vioSetElementData ( player, "job", dsatz["Job"] )
+		vioSetElementData ( player, "jobtime", dsatz["Jobtime"] )
+		vioSetElementData ( player, "club", dsatz["Club"] )
+		vioSetElementData ( player, "favchannel", tonumber ( dsatz["FavRadio"] ) )
+		vioSetElementData ( player, "bonuspoints", tonumber ( dsatz["Bonuspunkte"] ) )
+		local skill = tonumber ( dsatz["Truckerskill"] )
+		if not skill then
+			skill = 0
+		end
+		vioSetElementData ( player, "truckerlvl", skill )
+		vioSetElementData ( player, "airportlvl", tonumber ( dsatz["AirportLevel"] ) )
+		vioSetElementData ( player, "farmerLVL", tonumber ( dsatz["farmerLVL"] ) )
+		vioSetElementData ( player, "contract", tonumber ( dsatz["Contract"] ) )
+		vioSetElementData ( player, "socialState", dsatz["SocialState"] )
+		if tonumber ( dsatz["SocialState"] ) then
+			if tonumber ( dsatz["SocialState"] ) == 0 then
+				vioSetElementData ( player, "socialState", "Obdachloser" )
+			end
+		end
+		vioSetElementData ( player, "streetCleanPoints", tonumber ( dsatz["StreetCleanPoints"] ) )
+		
+		local handyString = dsatz["Handy"] 
+		local v1, v2
+		v1 = tonumber ( gettok ( handyString, 1, string.byte ( '|' ) ) )
+		v2 = tonumber ( gettok ( handyString, 2, string.byte ( '|' ) ) )
+		vioSetElementData ( player, "handyType", v1 )
+		vioSetElementData ( player, "handyCosts", v2 )
+		
+		loadAddictionsForPlayer ( player )
+		
+		isPremium ( player )
+		
+		vioSetElementData ( player, "housex", 0 )
+		vioSetElementData ( player, "housey", 0 )
+		vioSetElementData ( player, "housez", 0 )
+		vioSetElementData ( player, "house", "none" )
+		vioSetElementData ( player, "curplayingtime", 0 )
+		vioSetElementData ( player, "handystate", "on" )
+		
+		vioSetElementData ( player, "ammoTyp", 0 )
+		vioSetElementData ( player, "ammoAmount", 0 )
+		
+		packageLoad ( player )
+		achievload ( player )
+		inventoryload ( player )
+		elementDataSettings ( player )
+		bonusLoad ( player )
+		setPremiumData ( player )
+		skillDataLoad ( player )
+		
+		showFittingBlipForPlayer ( player )
+		
+		_G[pname.."paydaytime"] = setTimer ( playingtime, 60000, 1, player )
+		
+		RemoteSpawnPlayer ( player )
+		vioSetElementData ( player, "muted", 0 )
+		triggerClientEvent ( player, "DisableLoginWindow", getRootElement() )
+		triggerClientEvent ( player, "infobox_start", getRootElement(), "Du hast dich\nerfolgreich eingeloggt!\nDruecke F1 um das\nHilfemenue zu\noeffnen!", 5000, 0, 255, 0 )
+		outputDebugString ("Spieler "..pname.." wurde eingeloggt, IP: "..getPlayerIP(player))
+		vioSetElementData ( player, "loggedin", 1 )
+		vioSetElementData ( player, "ElementClicked", false )
+
+		if vioGetElementData ( player, "stvo_punkte" ) >= 15 then			-- SearchSTVO
+			vioSetElementData ( player, "carlicense", 0 )
+			vioSetElementData ( player, "stvo_punkte", 0 )
+			MySQL_SetString("userdata", "Autofuehrerschein", vioGetElementData ( player, "carlicense" ), dbPrepareString( handler, "Name LIKE ?", pname ) )
+			outputChatBox ( "Wegen deines schlechten Fahrverhaltens wurde dir dein Fuehrerschein abgenommen!", player, 125, 0, 0 )
+		end
+
+		dbQuery( login_func_object_DB, { player }, handler, "SELECT Object FROM inventar WHERE Name LIKE ?", pname )
+		
+		checkmsgs ( player )
+		
+		blacklistLogin ( pname )
+		
+		-- *** EasterEgg ***
+			--[[if month == 4 and day == 4 then
+				local oldlogin = MySQL_GetString("players", "Last_login", "Name LIKE '" ..pname.."'")
+				local oldlogin1 = tonumber (  gettok ( oldlogin, 1, string.byte('.') ) )
+				local oldlogin2 = tonumber (  gettok ( oldlogin, 2, string.byte('.') ) )
+				if ( oldlogin1 ~= 4 or oldlogin2 ~= 4 ) or ( minute < 25 and hour < 16 ) then
+					putFoodInSlot ( player, 5 )
+				end
+			elseif month == 4 and day == 5 then
+				local oldlogin = MySQL_GetString("players", "Last_login", "Name LIKE '" ..pname.."'")
+				local oldlogin1 = tonumber (  gettok ( oldlogin, 1, string.byte('.') ) )
+				local oldlogin2 = tonumber (  gettok ( oldlogin, 2, string.byte('.') ) )
+				if oldlogin1 ~= 4 or oldlogin2 ~= 5 then
+					putFoodInSlot ( player, 5 )
+				end
+			end]]
+		-- *** EasterEgg ***
+		dbExec( handler, "UPDATE players SET Last_login = ?, LastLogin = ? WHERE Name LIKE ?", lastlogin, lastLoginInt, pname )
+		
+		dbQuery( login_func_logout_DB, { player }, handler, "SELECT * FROM logout WHERE Name LIKE ?", pname )
+
+		getMailsForClient_func ( pname )
+		setMaximumCarsForPlayer ( player )
+		triggerEvent ( "onVioPlayerLogin", player )
+		
+		if tonumber ( dsatz["pred"] ) == 0 then
+			prompt ( player, promptMainText, 30 )
+			dbExec( handler, "UPDATE userdata SET pred = '1' WHERE Name = ?", pname )
+		end
+	end
+end
+
+local function login_func_DB ( qh, player, passwort, pname ) 
+	local result, errorcode, errormsg = dbPoll( qh, 0 )
+	if not result then
+		outputDebugString("Error executing the query: (" .. errorcode .. ") " .. errormsg)
+		return;
+	end 
+	if not result[1] then
+		return
+	end
+	result = result[1]
+
+	local salt = result["Salt"]
+	passwort = saltPassword ( salt, passwort )
+
+	if result["Passwort"] == md5(passwort) then	
+		local clantag = gettok ( pname, 1, string.byte(']') )
+
+		if string.lower ( clantag ) == "[".._G["Clantag"] then --or MySQL_ExistAmount ( "ticket_permitted", "name LIKE '"..pname.."'" ) > 0 then
+			if string.lower ( clantag ) == "[".._G["Clantag"] then
+				clanMembers[player] = pname
+			end
+			ticketPermitted[player] = pname
+			outputChatBox ( "Du kannst ankommende Anfragen mit /tickets bearbeiten.", player, 125, 0, 0 )
+		end
+		dbQuery( login_func_ticketansweres_DB, { player }, handler, "SELECT name FROM ticket_answeres WHERE name LIKE ?", pname )
+		
+		setPlayerLoggedIn ( pname )
+		-- Alte Passwörter ohne Salt auf Salt umschreiben --
+		if salt == "" then
+			salt = generateNewSalt()
+			passwort = md5 ( passwort .. salt )
+			dbExec( handler, "UPDATE players SET Salt = ?, Passwort = ? WHERE Name LIKE ?", salt, passwort, pname )
+		end
+		-- Salt --
+		vioSetElementData ( player, "salt", salt )
+		vioSetElementData ( player, "playerid", tonumber( result["id"] ) )
+		
+		toggleAllControls ( player, true )
+
+		vioSetElementData ( player, "loggedin", 1 )
+		
+		local logtime = getRealTime()
+		local year = logtime.year + 1900
+		local month = logtime.month + 1
+		local day = logtime.monthday
+		local hour = logtime.hour
+		local minute = logtime.minute
+		
+		local lastLoginInt = getSecTime ( 0 )
+		local lastlogin = tostring(day.."."..month.."."..year..", "..hour..":"..minute)
+		
+		dbQuery( login_func_DB2, { player, lastLoginInt, lastlogin }, handler, "SELECT * FROM userdata WHERE Name LIKE ?", pname )
+	else
+		triggerClientEvent ( player, "infobox_start", getRootElement(), "Ungueltiges Passwort -\nueberpruefe\ndeine Eingabe\noder melde dich\nim Forum.", 5000, 255, 0, 0 )
+		triggerClientEvent ( player, "guiShowLoginAgain", getRootElement() )
+		vioSetElementData ( player, "pwfailed", tonumber ( vioGetElementData ( player, "pwfailed" )) + 1 )
+		if vioGetElementData ( player, "pwfailed" ) >= 3 then
+			outputDebugString ("Spieler "..tostring ( getPlayerName(player) ).." wurde aufgrund eines falschen Passworts gekickt!IP: "..tostring ( getPlayerIP(player) ) )
+			kickPlayer ( player, "Du hast 3x das falsche Passwort eingegeben - Bitte melde dich bei einem Admin!", 0 )
+		end
+	end
+	bindKey ( player, "ralt", "down", showcurser, player )
+	bindKey ( player, "m", "down", showcurser, player )
+	bindKey ( player, "f1", "down", showhmenue, player )
+	bindKey ( player, "r", "down", reload )
+end
+
 function login_func ( player, passwort )
 	
 	if player == client then
 		if vioGetElementData ( player, "loggedin" ) == 0 then
-			local pname = MySQL_Save ( getPlayerName ( player ) )
-			local passwort = MySQL_Save ( passwort )
+			local pname = getPlayerName ( player )
 				
-			local passwort = saltPassword ( pname, passwort )
-			
-			local result = MySQL_GetString("players", "Passwort", "Name LIKE '" ..pname.."'")
-			if ( not result ) then
-				outputDebugString("Error executing the query: (" .. mysql_errno(handler) .. ") " .. mysql_error(handler))
-			else
-				if result == md5(passwort) then
-					
-					local clantag = gettok ( pname, 1, string.byte(']') )
-
-					if string.lower ( clantag ) == "[".._G["Clantag"] then --or MySQL_ExistAmount ( "ticket_permitted", "name LIKE '"..pname.."'" ) > 0 then
-						if string.lower ( clantag ) == "[".._G["Clantag"] then
-							clanMembers[player] = pname
-						end
-						ticketPermitted[player] = pname
-						outputChatBox ( "Du kannst ankommende Anfragen mit /tickets bearbeiten.", player, 125, 0, 0 )
-					end
-					if MySQL_DatasetExist ( "ticket_answeres", "name LIKE '"..pname.."'" ) then
-						outputChatBox ( "Du hast eine Antwort auf deine Anfrage erhalten! Tippe /readticket, um sie zu lesen.", player, 0, 200, 0 )
-					end
-					
-					setPlayerLoggedIn ( pname )
-					-- Alte Passwörter ohne Salt auf Salt umschreiben --
-					local salt = MySQL_GetString("players", "Salt", "Name LIKE '" ..MySQL_Save(pname).."'")
-					if salt == "" then
-						salt = generateNewSalt()
-						passwort = md5 ( passwort .. salt )
-						MySQL_SetString("players", "Salt", salt, "Name LIKE '" ..pname.."'")
-						MySQL_SetString("players", "Passwort", passwort, "Name LIKE '" ..pname.."'")
-					end
-					-- Salt --
-					vioSetElementData ( player, "salt", salt )
-					
-					toggleAllControls ( player, true )
-
-					vioSetElementData ( player, "loggedin", 1 )
-					
-					vioSetElementData  ( player, "loggedin", 1 )
-					
-					local logtime = getRealTime()
-					local year = logtime.year + 1900
-					local month = logtime.month + 1
-					local day = logtime.monthday
-					local hour = logtime.hour
-					local minute = logtime.minute
-					
-					local lastLoginInt = getSecTime ( 0 )
-					local lastlogin = tostring(day.."."..month.."."..year..", "..hour..":"..minute)
-					
-					local result = mysql_query ( handler, "SELECT * from userdata WHERE Name LIKE '"..pname.."'" )
-					if result then
-						if ( mysql_num_rows ( result ) > 0 ) then
-							dsatz = mysql_fetch_assoc ( result )
-							mysql_free_result ( result )
-						end
-					end
-					
-					local money = tonumber ( dsatz["Geld"] )
-					vioSetElementData ( player, "money", money )
-					if money >= 0 then
-						givePlayerMoney ( player, money )
-					else
-						takePlayerMoney ( player, money )
-					end
-					local fraktion = tonumber ( dsatz["Fraktion"] )
-					vioSetElementData ( player, "fraktion", fraktion )
-					if fraktion > 0 then
-						fraktionMembers[fraktion][player] = fraktion
-					end
-					local rang = tonumber ( dsatz["FraktionsRang"] )
-					if rang == 1 then
-						bindKey ( player, "1", "down", tazer_func, player )
-					end
-					vioSetElementData ( player, "rang", tonumber ( rang ) )
-					local admnlvl = tonumber ( dsatz["Adminlevel"] )
-					vioSetElementData ( player, "adminlvl", admnlvl )
-					if admnlvl >= 1 then
-						adminsIngame[player] = admnlvl
-					end
-					
-					vioSetElementData ( player, "spawnpos_x", dsatz["Spawnpos_X"] )
-					vioSetElementData ( player, "spawnpos_y", dsatz["Spawnpos_Y"] )
-					vioSetElementData ( player, "spawnpos_z", tonumber ( dsatz["Spawnpos_Z"] ) )
-					vioSetElementData ( player, "spawnrot_x", tonumber ( dsatz["Spawnrot_X"] ) )
-					vioSetElementData ( player, "spawnint", tonumber ( dsatz["SpawnInterior"] ) )
-					vioSetElementData ( player, "spawndim", tonumber ( dsatz["SpawnDimension"] ) )
-					vioSetElementData ( player, "playingtime", tonumber ( dsatz["Spielzeit"] ) )
-					vioSetElementData ( player, "curcars", tonumber ( dsatz["CurrentCars"] ) )
-					curcars = 0
-					local offerOnCar = false
-					for i = 1, 10 do
-						carvalue = MySQL_GetString("vehicles", "Special", "Slot LIKE '" ..i.."' AND Besitzer LIKE '"..pname.."'")
-						if carvalue == 2 then
-							vioSetElementData ( player, "yachtImBesitz", true )
-						end
-						if not carvalue then
-							if MySQL_DatasetExist("buyit", "Hoechstbietender LIKE '"..pname.."' AND Typ LIKE 'Veh'") then
-								carvalue = 3
-								offerOnCar = true
-							else
-								carvalue = 0
-							end
-						else
-							if carvalue == 2 then
-								carvalue = 2
-							else
-								carvalue = 1
-							end
-							curcars = curcars + 1
-						end
-						vioSetElementData ( player, "carslot"..i, carvalue )
-					end
-					vioSetElementData ( player, "curcars", curcars )
-					
-					vioSetElementData ( player, "deaths", tonumber ( dsatz["Tode"] ) )
-					vioSetElementData ( player, "kills", tonumber ( dsatz["Kills"] ) )
-					vioSetElementData ( player, "jailtime", tonumber ( dsatz["Knastzeit"] ) )
-					vioSetElementData ( player, "heaventime", tonumber ( dsatz["Himmelszeit"] ) )
-					
-					local Hausschluessel = MySQL_GetString("houses", "ID", "Besitzer LIKE '" ..pname.."'")
-					local key = tonumber ( dsatz["Hausschluessel"] )
-					if Hausschluessel then
-						vioSetElementData ( player, "housekey", tonumber ( Hausschluessel ) )
-					elseif key <= 0 then
-						vioSetElementData ( player, "housekey", key )
-					else
-						vioSetElementData ( player, "housekey", 0 )
-					end
-					
-					vioSetElementData ( player, "bizkey", tonumber ( dsatz["Bizschluessel"] ) )
-					vioSetElementData ( player, "bankmoney", tonumber ( dsatz["Bankgeld"] ) )
-					vioSetElementData ( player, "drugs", tonumber ( dsatz["Drogen"] ) )
-					vioSetElementData ( player, "skinid", tonumber ( dsatz["Skinid"] ) )
-					vioSetElementData ( player, "carlicense", tonumber ( dsatz["Autofuehrerschein"] ) )
-					vioSetElementData ( player, "bikelicense", tonumber ( dsatz["Motorradtfuehrerschein"] ) )
-					vioSetElementData ( player, "lkwlicense", tonumber ( dsatz["LKWfuehrerschein"] ) )
-					vioSetElementData ( player, "helilicense", tonumber ( dsatz["Helikopterfuehrerschein"] ) )
-					vioSetElementData ( player, "planelicensea", tonumber ( dsatz["FlugscheinKlasseA"] ) )
-					vioSetElementData ( player, "planelicenseb", tonumber ( dsatz["FlugscheinKlasseB"] ) )
-					vioSetElementData ( player, "motorbootlicense", tonumber ( dsatz["Motorbootschein"] ) )
-					vioSetElementData ( player, "segellicense", tonumber ( dsatz["Segelschein"] ) )
-					vioSetElementData ( player, "fishinglicense", tonumber ( dsatz["Angelschein"] ) )
-					vioSetElementData ( player, "wanteds", tonumber ( dsatz["Wanteds"] ) )
-					vioSetElementData ( player, "stvo_punkte", tonumber ( dsatz["StvoPunkte"] ) )
-					vioSetElementData ( player, "gunlicense", tonumber ( dsatz["Waffenschein"] ) )
-					vioSetElementData ( player, "perso", tonumber ( dsatz["Perso"] ) )
-					vioSetElementData ( player, "boni", tonumber ( dsatz["Boni"] ) )
-					vioSetElementData ( player, "incomepayday", tonumber ( dsatz["IncomePayday"] ) )
-					vioSetElementData ( player, "pdayincome", tonumber ( dsatz["PdayIncome"] ) )
-					vioSetElementData ( player, "pdaykosten", tonumber ( dsatz["PdayKosten"] ) )
-					vioSetElementData ( player, "telenr", tonumber ( dsatz["Telefonnr"] ) )
-					vioSetElementData ( player, "warns", getPlayerWarnCount ( pname ) )
-					vioSetElementData ( player, "gunboxa", dsatz["Gunbox1"] )
-					vioSetElementData ( player, "gunboxb", dsatz["Gunbox2"] )
-					vioSetElementData ( player, "gunboxc", dsatz["Gunbox3"] )
-					vioSetElementData ( player, "job", dsatz["Job"] )
-					vioSetElementData ( player, "jobtime", dsatz["Jobtime"] )
-					vioSetElementData ( player, "club", dsatz["Club"] )
-					vioSetElementData ( player, "favchannel", tonumber ( dsatz["FavRadio"] ) )
-					vioSetElementData ( player, "bonuspoints", tonumber ( dsatz["Bonuspunkte"] ) )
-					local skill = tonumber ( dsatz["Truckerskill"] )
-					if not skill then
-						skill = 0
-					end
-					vioSetElementData ( player, "truckerlvl", skill )
-					vioSetElementData ( player, "airportlvl", tonumber ( dsatz["AirportLevel"] ) )
-					vioSetElementData ( player, "farmerLVL", tonumber ( dsatz["farmerLVL"] ) )
-					vioSetElementData ( player, "contract", tonumber ( dsatz["Contract"] ) )
-					vioSetElementData ( player, "socialState", dsatz["SocialState"] )
-					if tonumber ( dsatz["SocialState"] ) then
-						if tonumber ( dsatz["SocialState"] ) == 0 then
-							vioSetElementData ( player, "socialState", "Obdachloser" )
-						end
-					end
-					vioSetElementData ( player, "streetCleanPoints", tonumber ( dsatz["StreetCleanPoints"] ) )
-					
-					local handyString = dsatz["Handy"] 
-					local v1, v2
-					v1 = tonumber ( gettok ( handyString, 1, string.byte ( '|' ) ) )
-					v2 = tonumber ( gettok ( handyString, 2, string.byte ( '|' ) ) )
-					vioSetElementData ( player, "handyType", v1 )
-					vioSetElementData ( player, "handyCosts", v2 )
-					
-					loadAddictionsForPlayer ( player )
-					
-					isPremium ( player )
-					
-					vioSetElementData ( player, "housex", 0 )
-					vioSetElementData ( player, "housey", 0 )
-					vioSetElementData ( player, "housez", 0 )
-					vioSetElementData ( player, "house", "none" )
-					vioSetElementData ( player, "curplayingtime", 0 )
-					vioSetElementData ( player, "handystate", "on" )
-					
-					vioSetElementData ( player, "ammoTyp", 0 )
-					vioSetElementData ( player, "ammoAmount", 0 )
-					
-					packageLoad ( player )
-					achievload ( player )
-					inventoryload ( player )
-					elementDataSettings ( player )
-					bonusLoad ( player )
-					setPremiumData ( player )
-					skillDataLoad ( player )
-					
-					showFittingBlipForPlayer ( player )
-					
-					_G[pname.."paydaytime"] = setTimer ( playingtime, 60000, 1, player )
-					
-					RemoteSpawnPlayer ( player )
-					vioSetElementData ( player, "muted", 0 )
-					triggerClientEvent ( player, "DisableLoginWindow", getRootElement() )
-					triggerClientEvent ( player, "infobox_start", getRootElement(), "Du hast dich\nerfolgreich eingeloggt!\nDruecke F1 um das\nHilfemenue zu\noeffnen!", 5000, 0, 255, 0 )
-					outputDebugString ("Spieler "..pname.." wurde eingeloggt, IP: "..getPlayerIP(player))
-					vioSetElementData ( player, "loggedin", 1 )
-					vioSetElementData ( player, "ElementClicked", false )
-
-					if vioGetElementData ( player, "stvo_punkte" ) >= 15 then			-- SearchSTVO
-						vioSetElementData ( player, "carlicense", 0 )
-						vioSetElementData ( player, "stvo_punkte", 0 )
-						MySQL_SetString("userdata", "Autofuehrerschein", vioGetElementData ( player, "carlicense" ), "Name LIKE '"..pname.."'")
-						outputChatBox ( "Wegen deines schlechten Fahrverhaltens wurde dir dein Fuehrerschein abgenommen!", player, 125, 0, 0 )
-					end
-					
-					vioSetElementData ( player, "object", tonumber ( MySQL_GetString ( "inventar", "Objekt", "Name LIKE '" ..pname.."'" ) ) )
-					
-					checkmsgs ( player )
-					
-					blacklistLogin ( pname )
-					
-					-- *** EasterEgg ***
-						--[[if month == 4 and day == 4 then
-							local oldlogin = MySQL_GetString("players", "Last_login", "Name LIKE '" ..pname.."'")
-							local oldlogin1 = tonumber (  gettok ( oldlogin, 1, string.byte('.') ) )
-							local oldlogin2 = tonumber (  gettok ( oldlogin, 2, string.byte('.') ) )
-							if ( oldlogin1 ~= 4 or oldlogin2 ~= 4 ) or ( minute < 25 and hour < 16 ) then
-								putFoodInSlot ( player, 5 )
-							end
-						elseif month == 4 and day == 5 then
-							local oldlogin = MySQL_GetString("players", "Last_login", "Name LIKE '" ..pname.."'")
-							local oldlogin1 = tonumber (  gettok ( oldlogin, 1, string.byte('.') ) )
-							local oldlogin2 = tonumber (  gettok ( oldlogin, 2, string.byte('.') ) )
-							if oldlogin1 ~= 4 or oldlogin2 ~= 5 then
-								putFoodInSlot ( player, 5 )
-							end
-						end]]
-					-- *** EasterEgg ***
-					MySQL_SetString("players", "Last_login", lastlogin, "Name LIKE '"..pname.."'")
-					MySQL_SetString("players", "LastLogin", lastLoginInt, "Name LIKE '"..pname.."'")
-					
-					local position = MySQL_GetString("logout", "Position", "Name LIKE '" ..pname.."'")
-					if position then
-						weapons = MySQL_GetString ( "logout", "Waffen", "Name LIKE '" ..pname.."'" )
-						MySQL_DelRow ( "logout", "Name LIKE '"..pname.."'" )
-						for i = 1, 12 do
-							local wstring = gettok ( weapons, i, string.byte( '|' ) )
-							if wstring then
-								if wstring then
-									if #wstring >= 3 then
-										local weapon = tonumber ( gettok ( wstring, 1, string.byte( ',' ) ) )
-										local ammo = tonumber ( gettok ( wstring, 2, string.byte( ',' ) ) )
-										giveWeapon ( player, weapon, ammo, true )
-										triggerClientEvent ( player, "sec_gun_give", getRootElement(), weapon, ammo )
-									end
-								end
-							end
-						end
-						if position ~= "false" then
-							local x = tonumber ( gettok ( position, 1, string.byte( '|' ) ) )
-							local y = tonumber ( gettok ( position, 2, string.byte( '|' ) ) )
-							local z = tonumber ( gettok ( position, 3, string.byte( '|' ) ) )
-							local int = tonumber ( gettok ( position, 4, string.byte( '|' ) ) )
-							local dim = tonumber ( gettok ( position, 5, string.byte( '|' ) ) )
-							setTimer ( setElementInterior, 1000, 1, player, int )
-							setTimer ( setElementDimension, 1000, 1, player, dim )
-							setTimer ( setElementPosition, 1000, 1, player, x, y, z )
-						end
-					end
-					getMailsForClient_func ( pname )
-					setMaximumCarsForPlayer ( player )
-					triggerEvent ( "onVioPlayerLogin", player )
-					
-					if tonumber ( dsatz["pred"] ) == 0 then
-						prompt ( player, promptMainText, 30 )
-						mysql_vio_query ( "UPDATE userdata SET pred = '1' WHERE Name = '"..pname.."'" )
-					end
-				else
-					triggerClientEvent ( player, "infobox_start", getRootElement(), "Ungueltiges Passwort -\nueberpruefe\ndeine Eingabe\noder melde dich\nim Forum.", 5000, 255, 0, 0 )
-					triggerClientEvent ( player, "guiShowLoginAgain", getRootElement() )
-					vioSetElementData ( player, "pwfailed", tonumber ( vioGetElementData ( player, "pwfailed" )) + 1 )
-					if vioGetElementData ( player, "pwfailed" ) >= 3 then
-						outputDebugString ("Spieler "..tostring ( getPlayerName(player) ).." wurde aufgrund eines falschen Passworts gekickt!IP: "..tostring ( getPlayerIP(player) ) )
-						kickPlayer ( player, "Du hast 3x das falsche Passwort eingegeben - Bitte melde dich bei einem Admin!", 0 )
-					end
-				end
-			end
-			bindKey ( player, "ralt", "down", showcurser, player )
-			bindKey ( player, "m", "down", showcurser, player )
-			bindKey ( player, "f1", "down", showhmenue, player )
-			bindKey ( player, "r", "down", reload )
+			dbQuery( login_func_DB, { player, passwort, pname }, handler, "SELECT * FROM players WHERE Name LIKE ?", pname )
 		end
 	end
 end
@@ -813,7 +811,7 @@ function datasave ( quitReason, reason )
 	removePlayerFromLoggedIn ( pname )
 	if vioGetElementData ( source, "loggedin" ) == 1 then
 		triggerEvent ( "onLoggedInPlayerQuit", source )
-		pname = MySQL_Save ( getPlayerName ( source ) )
+		pname = getPlayerName ( source )
 		fraktionMembers[vioGetElementData(source,"fraktion")][source] = nil
 		adminsIngame[source] = nil
 		if getElementData ( source, "isInHighNoon" ) or vioGetElementData ( source, "shootingRanchGun" ) then
@@ -855,7 +853,7 @@ function datasave ( quitReason, reason )
 					end
 				end
 				if #curWeaponsForSave > 1 then
-					mysql_vio_query( "INSERT INTO logout (Position, Waffen, Name) VALUES ('false', '"..curWeaponsForSave.."', '"..pname.."')")
+					dbExec ( handler, "INSERT INTO logout (Position, Waffen, Name) VALUES ('false', '"..curWeaponsForSave.."', ?)", pname )
 				end
 			end
 		end
@@ -900,9 +898,72 @@ function datasave ( quitReason, reason )
 end
 addEventHandler ("onPlayerQuit", getRootElement(), datasave )
 
+
+local function elementDataSettings_spezial_DB ( qh, player )
+	local result = dbPoll ( qh, 0 )
+	if result and result[1] then
+		local Weapon_Settings = result[1]["Spezial"]
+		local shads = {}
+		
+		if not Weapon_Settings then
+			for i = 1, 6 do
+				shads[i] = 0
+			end
+		else
+			for i = 1, 6 do
+				shads[i] = tonumber ( gettok ( Weapon_Settings, i, string.byte( '|' ) ) )
+			end
+		end
+		
+		for i, on in pairs ( shads ) do
+			vioSetElementData ( player, "ammoTyp"..i, tonumber(on) )
+		end
+	end
+end
+
+local function elementDataSettings_userdata_DB ( qh, player )
+	local result = dbPoll( qh, 0 )
+	if result and result[1] then
+		-------------------------------------------------------------
+		local Shader_Settings = result[1]["Shader"]
+		local shads = {}
+		
+		if not Shader_Settings then
+			for i = 1, 4 do
+				shads[i] = 0
+			end
+		else
+			for i = 1, 4 do
+				shads[i] = tonumber ( gettok ( Shader_Settings, i, string.byte( '|' ) ) )
+			end
+		end
+		
+		for i, on in pairs ( shads ) do
+			if on == 1 then
+				triggerClientEvent ( player, "triggerVioShader"..i, player )
+				vioSetElementData ( player, "shader"..vals[i], 1 )
+			else
+				vioSetElementData ( player, "shader"..vals[i], 0 )
+			end
+		end
+		---------------------------------------------------------
+
+		ArmyPermissions = result[1]["ArmyPermissions"]
+		if not ArmyPermissions then
+			for i = 1, 9 do
+				vioSetElementData ( player, "armyperm"..i, 0 )
+			end
+		else
+			for i = 1, 9 do
+				vioSetElementData ( player, "armyperm"..i, tonumber ( gettok ( ArmyPermissions, i, string.byte( '|' ) ) ) )
+			end
+		end
+	end
+end
+
 function elementDataSettings ( player )
 
-	local pname = MySQL_Save ( getPlayerName ( player ) )
+	local pname = getPlayerName ( player )
 	betaServerMessage ( player )
 	vioSetElementData ( player, "In_DMArena", 0 )
 	vioSetElementData ( player, "objectToPlace", false )
@@ -920,61 +981,8 @@ function elementDataSettings ( player )
 	vioSetElementData ( player, "isInHighNoon", false )
 	------------------
 	
-	local Weapon_Settings = MySQL_GetString("inventar", "Spezial", "Name LIKE '" ..pname.."'")
-	local shads = {}
-	
-	if not Weapon_Settings then
-		for i = 1, 6 do
-			shads[i] = 0
-		end
-	else
-		for i = 1, 6 do
-			shads[i] = tonumber ( gettok ( Weapon_Settings, i, string.byte( '|' ) ) )
-		end
-	end
-	
-	for i, on in pairs ( shads ) do
-		
-		vioSetElementData ( player, "ammoTyp"..i, tonumber(on) )
-	
-	end
-	
-	----------------
-	local Shader_Settings = MySQL_GetString("userdata", "Shader", "Name LIKE '" ..pname.."'")
-	local shads = {}
-	
-	if not Shader_Settings then
-		for i = 1, 4 do
-			shads[i] = 0
-		end
-	else
-		for i = 1, 4 do
-			shads[i] = tonumber ( gettok ( Shader_Settings, i, string.byte( '|' ) ) )
-		end
-	end
-	
-	for i, on in pairs ( shads ) do
-		
-		if on == 1 then
-			triggerClientEvent ( player, "triggerVioShader"..i, player )
-			vioSetElementData ( player, "shader"..vals[i], 1 )
-		else
-			vioSetElementData ( player, "shader"..vals[i], 0 )
-		end
-	
-	end
-		
-	----------------	
-	ArmyPermissions = MySQL_GetString("userdata", "ArmyPermissions", "Name LIKE '" ..pname.."'")
-	if not ArmyPermissions then
-		for i = 1, 9 do
-			vioSetElementData ( player, "armyperm"..i, 0 )
-		end
-	else
-		for i = 1, 9 do
-			vioSetElementData ( player, "armyperm"..i, tonumber ( gettok ( ArmyPermissions, i, string.byte( '|' ) ) ) )
-		end
-	end
+	dbQuery ( elementDataSettings_spezial_DB, { player }, handler, "SELECT Spezial FROM inventar WHERE Name LIKE ?", pname )
+	dbQuery ( elementDataSettings_userdata_DB, { player }, handler, "SELECT Shader, ArmyPermissions FROM userdata WHERE Name LIKE ?", pname )
 end
 
 function saveArmyPermissions ( player )
@@ -985,7 +993,7 @@ function saveArmyPermissions ( player )
 		empty = empty.."|"..vioGetElementData ( player, "armyperm"..i )
 	end
 	empty = empty.."|"
-	MySQL_SetString("userdata", "ArmyPermissions", empty, "Name LIKE '"..pname.."'")
+	dbExec( handler, "UPDATE userdata SET ArmyPermissions = ? WHERE Name LIKE ?", empty, pname )
 end
 
 function saveShaderInfo ( player )
@@ -994,7 +1002,7 @@ function saveShaderInfo ( player )
 	
 	local pname = getPlayerName ( player )
 	
-	MySQL_SetString("userdata", "Shader", s_string, "Name LIKE '"..pname.."'")
+	MySQL_SetString("userdata", "Shader", s_string, dbPrepareString( handler, "Name LIKE ?", pname ))
 
 end
 
@@ -1042,21 +1050,19 @@ function saveSpecialInfo ( player )
 	-- "|0|0|0|0|0|0|"
 	local pname = getPlayerName ( player )
 
-	MySQL_SetString("inventar", "Spezial", s_string, "Name LIKE '"..pname.."'")
+	MySQL_SetString("inventar", "Spezial", s_string, dbPrepareString( handler, "Name LIKE ?", pname ) )
 end
 
 function SaveCarData ( player )
 
-	local pname = MySQL_Save ( getPlayerName ( player ) )
-	MySQL_SetString("userdata", "Geld", MySQL_Save ( MySQL_Save ( vioGetElementData ( player, "money" )) ), "Name LIKE '"..pname.."'")
-	MySQL_SetString("userdata", "CurrentCars", MySQL_Save ( MySQL_Save ( vioGetElementData ( player, "curcars" )) ), "Name LIKE '"..pname.."'")
-	MySQL_SetString("userdata", "Maximumcars", MySQL_Save ( MySQL_Save ( vioGetElementData ( player, "maxcars" )) ), "Name LIKE '"..pname.."'")
+	local pname = getPlayerName ( player )
+	dbExec( handler, "UPDATE userdata SET Geld=?, CurrentCars=?, Maximumcars=? WHERE Name LIKE ?", vioGetElementData ( player, "money" ), vioGetElementData ( player, "curcars" ), vioGetElementData ( player, "maxcars" ), pname )
 end
 
 function datasave_remote ( player )
 	
 	local source = player
-	if tonumber ( MySQL_Save ( vioGetElementData ( source, "loggedin" ))) == 1 then
+	if tonumber ( vioGetElementData ( source, "loggedin" ) ) == 1 then
 		local pname = getPlayerName ( source )
 		local fields = "SET"
 		fields = fields.." Geld = '"..math.abs ( math.floor ( vioGetElementData ( source, "money" ) ) ).."'"
@@ -1096,13 +1102,13 @@ function datasave_remote ( player )
 		fields = fields..", farmerLVL = '"..vioGetElementData ( source, "farmerLVL" ).."'"
 		fields = fields..", AirportLevel = '"..math.floor ( vioGetElementData ( source, "airportlvl" ) ).."'"
 		fields = fields..", Contract = '"..math.floor ( vioGetElementData ( source, "contract" ) ).."'"
-		fields = fields..", SocialState = '"..MySQL_Save ( getElementData ( source, "socialState") ).."'"
+		fields = fields..", SocialState = '"..getElementData ( source, "socialState").."'"
 		fields = fields..", StreetCleanPoints = '"..math.floor ( getElementData ( source, "streetCleanPoints" ) ).."'"
 		local v1 = "|"..vioGetElementData ( source, "handyType" ).."|"
 		local v2 = vioGetElementData ( source, "handyCosts" ).."|"
 		local v3 = v1..v2
 		fields = fields..", Handy = '"..v3.."'"
-		mysql_vio_query ( "UPDATE userdata "..fields.." WHERE Name LIKE '"..pname.."'" )
+		dbExec ( handler, "UPDATE userdata "..fields.." WHERE Name LIKE ?", pname )
 		
 		saveAddictionsForPlayer ( source )
 		packageSave(source)
@@ -1119,52 +1125,50 @@ end
 
 function achievsave ( player )
 
-	local pname = MySQL_Save ( getPlayerName ( player ) )
+	local pname = getPlayerName ( player ) 
 	saveHorseShoesFound ( player, pname )
-	MySQL_SetString("achievments", "Waffenschieber", MySQL_Save ( vioGetElementData ( player, "gunloads") ), "Name LIKE '"..pname.."'")
-	MySQL_SetString("achievments", "Fahrzeugwahn", MySQL_Save ( vioGetElementData ( player, "carwahn_achiev") ), "Name LIKE '"..pname.."'")
+	dbExec( handler, "UPDATE achievments SET Waffenschieber=?, Fahrzeugwahn=? WHERE Name LIKE ?", vioGetElementData ( player, "gunloads" ), vioGetElementData ( player, "carwahn_achiev" ), pname )
 	savePlayingTimeForSleeplessAchiev ( player, pname )
+end
+
+local function achievload_DB ( qh, player, pname )
+	local result = dbPoll( qh, 0 )
+	if result and result[1] then 
+		local dsatz = result[1]
+		vioSetElementData ( player, "schlaflosinsa", dsatz["SchlaflosInSA"] )
+		vioSetElementData ( player, "gunloads", dsatz["Waffenschieber"] )
+		vioSetElementData ( player, "angler_achiev", dsatz["Angler"] )
+		vioSetElementData ( player, "licenses_achiev", dsatz["Lizensen"] )
+		vioSetElementData ( player, "carwahn_achiev", dsatz["Fahrzeugwahn"] )
+		vioSetElementData ( player, "collectr_achiev", dsatz["DerSammler"] )
+		vioSetElementData ( player, "rl_achiev", dsatz["ReallifeWTF"] )
+		vioSetElementData ( player, "own_foots", dsatz["EigeneFuesse"] )
+		vioSetElementData ( player, "kingofthehill_achiev", dsatz["KingOfTheHill"] )
+		vioSetElementData ( player, "thetruthisoutthere_achiev", dsatz["TheTruthIsOutThere"] )
+		vioSetElementData ( player, "silentassasin_achiev", dsatz["SilentAssasin"] )
+		vioSetElementData ( player, "highwaytohell_achiev", dsatz["HighwayToHell"] )
+		
+		vioSetElementData ( player, "revolverheld_achiev", tonumber ( dsatz["Revolverheld"] ) )
+		vioSetElementData ( player, "chickendinner_achiev", tonumber ( dsatz["ChickenDinner"] ) )
+		vioSetElementData ( player, "nichtsgehtmehr_achiev", tonumber ( dsatz["NichtGehtMehr"] ) )
+		vioSetElementData ( player, "highscore_achiev", tonumber ( dsatz["highscore"] ) == 1 )
+
+		local dstring = dsatz["LookoutsA"]
+		triggerClientEvent ( player, "hideLookoutMarkers", getRootElement(), dstring )
+		local count = 0
+		for i = 1, 10 do
+			if tonumber ( gettok ( dstring, i, string.byte ( '|' ) ) ) == 1 then
+				count = count + 1
+			end
+		end
+		vioSetElementData ( player, "viewpoints", count )
+	end
 end
 
 function achievload ( player )
 
-	local pname = MySQL_Save ( getPlayerName ( player ) )
-	local dsatz
-	local result = mysql_query ( handler, "SELECT * from achievments WHERE Name LIKE '"..pname.."'" )
-	if result then
-		if ( mysql_num_rows ( result ) > 0 ) then
-			dsatz = mysql_fetch_assoc ( result )
-			mysql_free_result ( result )
-		end
-	end
-	vioSetElementData ( player, "schlaflosinsa", dsatz["SchlaflosInSA"] )
-	vioSetElementData ( player, "gunloads", dsatz["Waffenschieber"] )
-	vioSetElementData ( player, "angler_achiev", dsatz["Angler"] )
-	vioSetElementData ( player, "licenses_achiev", dsatz["Lizensen"] )
-	vioSetElementData ( player, "carwahn_achiev", dsatz["Fahrzeugwahn"] )
-	vioSetElementData ( player, "collectr_achiev", dsatz["DerSammler"] )
-	vioSetElementData ( player, "rl_achiev", dsatz["ReallifeWTF"] )
-	vioSetElementData ( player, "own_foots", dsatz["EigeneFuesse"] )
-	vioSetElementData ( player, "kingofthehill_achiev", dsatz["KingOfTheHill"] )
-	vioSetElementData ( player, "thetruthisoutthere_achiev", dsatz["TheTruthIsOutThere"] )
-	vioSetElementData ( player, "silentassasin_achiev", dsatz["SilentAssasin"] )
-	vioSetElementData ( player, "highwaytohell_achiev", dsatz["HighwayToHell"] )
-	
-	vioSetElementData ( player, "revolverheld_achiev", tonumber ( dsatz["Revolverheld"] ) )
-	vioSetElementData ( player, "chickendinner_achiev", tonumber ( dsatz["ChickenDinner"] ) )
-	vioSetElementData ( player, "nichtsgehtmehr_achiev", tonumber ( dsatz["NichtGehtMehr"] ) )
-	vioSetElementData ( player, "highscore_achiev", tonumber ( dsatz["highscore"] ) == 1 )
-	
-	local dstring = dsatz["LookoutsA"]
-	triggerClientEvent ( player, "hideLookoutMarkers", getRootElement(), dstring )
-	local count = 0
-	for i = 1, 10 do
-		if tonumber ( gettok ( dstring, i, string.byte ( '|' ) ) ) == 1 then
-			count = count + 1
-		end
-	end
-	vioSetElementData ( player, "viewpoints", count )
-	dsatz = nil
+	local pname = getPlayerName ( player )
+	dbQuery ( achievload_DB, { player, pname }, handler, "SELECT * from achievments WHERE Name LIKE ?", pname )
 	--[[
 	vioSetElementData ( player, "schlaflosinsa", MySQL_GetString("achievments", "SchlaflosInSA", "Name LIKE '" ..pname.."'") )
 	vioSetElementData ( player, "gunloads", MySQL_GetString("achievments", "Waffenschieber", "Name LIKE '" ..pname.."'") )
@@ -1224,7 +1228,7 @@ function inventorysave ( player )
 	fields = fields..", Chips = '"..vioGetElementData ( player, "casinoChips" ).."'"
 	fields = fields..", eggs = '"..vioGetElementData ( player, "easterEggs" ).."'"
 	--fields = fields..", Geschenke = '"..vioGetElementData ( player, "presents" ).."'"
-	mysql_vio_query ( "UPDATE inventar "..fields.." WHERE Name LIKE '"..pname.."'" )
+	dbExec ( handler, "UPDATE inventar "..fields.." WHERE Name LIKE ?", pname )
 end
 
 function casinoMoneySave ( player )
@@ -1234,43 +1238,42 @@ function casinoMoneySave ( player )
 		local chips = math.abs ( math.floor ( vioGetElementData ( player, "casinoChips" ) ) )
 		local money = math.floor ( vioGetElementData ( player, "money" ) )
 		local bankMoney = math.floor ( vioGetElementData ( player, "bankmoney" ) )
-		mysql_vio_query ( "UPDATE inventar SET Chips = '"..chips.."' WHERE Name LIKE '"..name.."'" )
-		mysql_vio_query ( "UPDATE userdata SET Geld = '"..money.."' WHERE Name LIKE '"..name.."'" )
-		mysql_vio_query ( "UPDATE userdata SET Bankgeld = '"..bankMoney.."' WHERE Name LIKE '"..name.."'" )
+		dbExec ( handler, "UPDATE inventar SET Chips = '"..chips.."' WHERE Name LIKE ?", name )
+		dbExec ( handler, "UPDATE userdata SET Geld = '"..money.."', Bankgeld = '"..bankMoney.."' WHERE Name LIKE ?", name )
+	end
+end
+
+
+local function inventoryload_DB ( qh, player, pname )
+	local result = dbPoll( qh, 0 )
+	if result and result[1] then
+		local dsatz = result[1]
+		vioSetElementData ( player, "dice", tonumber ( dsatz["Wuerfel"] ) )
+		vioSetElementData ( player, "flowerseeds", tonumber ( dsatz["Blumensamen"] ) )
+		vioSetElementData ( player, "food1", tonumber ( dsatz["Essensslot1"] ) )
+		vioSetElementData ( player, "food2", tonumber ( dsatz["Essensslot2"] ) )
+		vioSetElementData ( player, "food3", tonumber ( dsatz["Essensslot3"] ) )
+		vioSetElementData ( player, "zigaretten", tonumber ( dsatz["Zigaretten"] ) )
+		vioSetElementData ( player, "mats", tonumber ( dsatz["Materials"] ) )
+		vioSetElementData ( player, "benzinkannister", tonumber ( dsatz["Benzinkanister"] ) )
+		vioSetElementData ( player, "fruitNotebook", tonumber ( dsatz["FruitNotebook"] ) )
+		vioSetElementData ( player, "casinoChips", tonumber ( dsatz["Chips"] ) )
+		vioSetElementData ( player, "gameboy", tonumber ( dsatz["Gameboy"] ) )
+		vioSetElementData ( player, "easterEggs", tonumber ( dsatz["eggs"] ) )
 	end
 end
 
 function inventoryload ( player )
 
 	local pname = getPlayerName ( player )
-	vioSetElementData ( player, "playerid", tonumber ( MySQL_GetString("players", "id", "Name LIKE '" ..pname.."'")) )
 	
 	local dsatz
-	local result = mysql_query ( handler, "SELECT * from inventar WHERE Name LIKE '"..pname.."'" )
-	if result then
-		if ( mysql_num_rows ( result ) > 0 ) then
-			dsatz = mysql_fetch_assoc ( result )
-			mysql_free_result ( result )
-		end
-	end
+	dbQuery ( inventoryload_DB, { player, pname }, handler, "SELECT * from inventar WHERE Name LIKE ?" )
 	
-	vioSetElementData ( player, "dice", tonumber ( dsatz["Wuerfel"] ) )
-	vioSetElementData ( player, "flowerseeds", tonumber ( dsatz["Blumensamen"] ) )
-	vioSetElementData ( player, "food1", tonumber ( dsatz["Essensslot1"] ) )
-	vioSetElementData ( player, "food2", tonumber ( dsatz["Essensslot2"] ) )
-	vioSetElementData ( player, "food3", tonumber ( dsatz["Essensslot3"] ) )
-	vioSetElementData ( player, "zigaretten", tonumber ( dsatz["Zigaretten"] ) )
-	vioSetElementData ( player, "mats", tonumber ( dsatz["Materials"] ) )
-	vioSetElementData ( player, "benzinkannister", tonumber ( dsatz["Benzinkanister"] ) )
-	vioSetElementData ( player, "fruitNotebook", tonumber ( dsatz["FruitNotebook"] ) )
-	vioSetElementData ( player, "casinoChips", tonumber ( dsatz["Chips"] ) )
-	vioSetElementData ( player, "gameboy", tonumber ( dsatz["Gameboy"] ) )
-	vioSetElementData ( player, "easterEggs", tonumber ( dsatz["eggs"] ) )
 	-- X-MAS --
 	-- vioSetElementData ( player, "presents", tonumber ( dsatz["Geschenke"] ) )
 	-- X-MAS --
 	
-	dsatz = nil
 	--[[
 	vioSetElementData ( player, "dice", tonumber ( MySQL_GetString("inventar", "Wuerfel", "Name LIKE '" ..pname.."'")) )
 	vioSetElementData ( player, "flowerseeds", tonumber ( MySQL_GetString("inventar", "Blumensamen", "Name LIKE '" ..pname.."'")) )
@@ -1295,9 +1298,9 @@ function logoutPlayer_func ( x, y, z, int, dim )
 	if vioGetElementData ( client, "shootingRanchGun" ) then
 		
 	else
-		local pname = MySQL_Save ( getPlayerName ( client ) )
-		local int = tonumber ( MySQL_Save ( int ) )
-		local dim = tonumber ( MySQL_Save ( dim ) )
+		local pname = getPlayerName ( client )
+		local int = tonumber ( int )
+		local dim = tonumber ( dim )
 		local curWeaponsForSave = "|"
 		for i = 1, 11 do
 			if i ~= 10 then
@@ -1312,12 +1315,11 @@ function logoutPlayer_func ( x, y, z, int, dim )
 				end
 			end
 		end
-		curWeaponsForSave = MySQL_Save ( curWeaponsForSave )
 		pos = "|"..(math.floor(x*100)/100).."|"..(math.floor(y*100)/100).."|"..(math.floor(z*100)/100).."|"..int.."|"..dim.."|"
 		if #curWeaponsForSave < 5 then
 			curWeaponsForSave = ""
 		end
-		local result = mysql_vio_query( "INSERT INTO logout (Position, Waffen, Name) VALUES ('"..pos.."', '"..curWeaponsForSave.."', '"..pname.."')")
+		dbExec ( handler, "INSERT INTO logout (Position, Waffen, Name) VALUES ('"..pos.."', '"..curWeaponsForSave.."', ?)", pname )
 		kickPlayer ( client, "Ausgeloggt." )
 	end
 end

@@ -84,7 +84,7 @@ function createBlitzer ()
 										vioSetElementData ( player, "highscore_achiev", true )
 										triggerClientEvent ( player, "showAchievmentBox", player, " Highscore!", 10, 10000 )
 										vioSetElementData ( player, "bonuspoints", tonumber ( vioGetElementData ( player, "bonuspoints" ) ) + 10 )
-										mysql_vio_query ( "UPDATE achievments SET highscore = '1' WHERE Name LIKE '"..getPlayerName ( player ).."'" )
+										dbExec( handler, "UPDATE achievments SET highscore = '1' WHERE Name LIKE ?", getPlayerName ( player ) )
 									end
 								end
 								
@@ -103,8 +103,7 @@ function createBlitzer ()
 								1000, 1, player, math.abs ( math.floor ( kmhToMuch ) ) + 100, math.abs ( math.floor ( kmhToMuch ) ), strafe, points )
 								outputChatBox ( "Das war bereits dein "..vioGetElementData(player, "stvo_punkte")..". Punkt - Bei 15 wird dir dein Fuehrerschein beim naechsten Einloggen entzogen!", player, 255, 255, 0 )
 								
-								local fmoney = tonumber ( MySQL_GetString ( "fraktionen", "DepotGeld", "ID LIKE '1'" ) )
-								MySQL_SetString ( "fraktionen", "DepotGeld", fmoney + strafe, "ID LIKE '1'" )
+								dbExec( handler, "UPDATE fraktionen SET DepotGeld = DepotGeld + ? WHERE ID LIKE '1'", strafe )
 							end
 						end
 					end

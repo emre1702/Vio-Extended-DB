@@ -16,7 +16,7 @@ function emailCheck_func ( version )
 			local ip = getPlayerIP ( source )
 			local serial = getPlayerSerial ( source )
 			reason = "Modifizierte Files"
-			mysql_vio_query(handler, "INSERT INTO ban (Name, Admin, Grund, Datum, IP, Serial) VALUES ('"..getPlayerName(source).."', 'Anticheat', '"..reason.."', '"..timestamp().."', '"..ip.."', '"..serial.."')")
+			dbExec( handler, "INSERT INTO ban (Name, Admin, Grund, Datum, IP, Serial) VALUES (?, 'Anticheat', ?, '"..timestamp().."', ?, ?)", getPlayerName(source), reason, ip, serial )
 			kickPlayer ( source, "Vom Anticheat gebannt!" )
 		end
 	end

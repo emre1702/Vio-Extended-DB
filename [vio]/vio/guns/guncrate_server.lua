@@ -44,8 +44,7 @@ gunBoxes = {
 function exchangeWeaponsWithBox_func ( player, slot, action )
 	
 	player = client
-	slot = tonumber ( MySQL_Save ( slot ) )
-	action = MySQL_Save ( action )
+	slot = tonumber ( slot )
 	
 	local curgun = getPedWeapon ( player )
 	local curammo = getPedTotalAmmo ( player )

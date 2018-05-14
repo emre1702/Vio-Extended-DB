@@ -6,6 +6,76 @@ TriadenGunshopEnter = createMarker ( -2186.9372558594, 698.5894165039, 53.916328
 createMarker ( 1914.2331542969, 1014.4857788086, 9.8027935028076, "cylinder", 1.5, 125, 0, 0, 125, getRootElement() )
 TriadenGunshopEnterCasino = createMarker ( 1914.2331542969, 1014.4857788086, 9.8027935028076 + 1, "corona", 1.5, 0, 0, 0, getRootElement() )
 
+
+local function TriadenDeliver_func_DB2 ( qh, veh ) 
+	local result = dbPoll( qh, 0 )
+	if result and result[1] then
+		local d = result[1]
+		TriadenFamkasse = tonumber( d["DepotGeld"] ) - vioGetElementData ( veh, "costs" )
+		dbExec( handler, "UPDATE fraktionen SET DepotGeld = ? WHERE Name LIKE 'Triaden'", TriadenFamkasse )
+	end
+end
+
+local function TriadenDeliver_func_DB1 ( qh, player, dim, veh ) 
+	local result = dbPoll( qh, 0 )
+	if result and result[1] then
+		local d = result[1]
+		TriadenSchlagringe = d["Schlagringe"] + vioGetElementData( veh, "schlagringe" )
+		TriadenBaseballschlaeger = d["Baseballschlaeger"] + vioGetElementData( veh, "baseball" )
+		TriadenMesser = d["Messer"] + vioGetElementData( veh, "knife" )
+		TriadenSchaufeln = d["Schaufeln"] + vioGetElementData( veh, "shovels" )
+		TriadenPistolen = d["Pistolen"] + vioGetElementData( veh, "pistol" )
+		TriadenSDPistolen = d["SDPistolen"] + vioGetElementData( veh, "sdpistol" )
+		TriadenPistolenMagazine = d["PistolenMagazine"] + vioGetElementData( veh, "pistolammo" )
+		TriadenDesertEagles = d["DesertEagles"] + vioGetElementData( veh, "eagle" )
+		TriadenDesertEagleMunition = d["DesertEagleMunition"] + vioGetElementData( veh, "eagleammo" )
+		TriadenSchrotflinten = d["Schrotflinten"] + vioGetElementData( veh, "shotgun" )
+		TriadenSchrotflintenMunition = d["SchrotflintenMunition"] + vioGetElementData( veh, "shotgunammo" )
+		TriadenMP = d["MP"] + vioGetElementData( veh, "mp" )
+		TriadenMPMunition = d["MPMunition"] + vioGetElementData( veh, "mpammo" )
+		TriadenAK = d["AK"] + vioGetElementData( veh, "ak" )
+		TriadenAKMunition = d["AKMunition"] + vioGetElementData( veh, "akammo" )
+		TriadenM = d["M"] + vioGetElementData( veh, "m" )
+		TriadenMMunition = d["MMunition"] + vioGetElementData( veh, "mammo" )
+		TriadenGewehre = d["Gewehre"] + vioGetElementData( veh, "gewehr" )
+		TriadenGewehrPatronen = d["GewehrPatronen"] + vioGetElementData( veh, "gewehrammo" )
+		TriadenSGewehr = d["SGewehr"] + vioGetElementData( veh, "sgewehr" )
+		TriadenSGewehrMunition = d["SGewehrMunition"] + vioGetElementData( veh, "sgewehrammo" )
+		TriadenRaketenwerfer = d["Raketenwerfer"] + vioGetElementData( veh, "rakwerfer" )
+		TriadenRaketen = d["Raketen"] + vioGetElementData( veh, "rak" )
+		TriadenSpezwaffen = d["Spezwaffen"] + vioGetElementData( veh, "spezgun" )
+		
+		local querystr = dbPrepareString( handler, "UPDATE fraktionswaffen SET Schlagringe = ?, ", TriadenSchlagringe )
+		querystr = querystr .. dbPrepareString( handler, "Baseballschlaeger = ?, ", TriadenBaseballschlaeger )
+		querystr = querystr .. dbPrepareString( handler, "Messer = ?, ", TriadenMesser )
+		querystr = querystr .. dbPrepareString( handler, "Schaufeln = ?, ", TriadenSchaufeln )
+		querystr = querystr .. dbPrepareString( handler, "Pistolen = ?, ", TriadenPistolen )
+		querystr = querystr .. dbPrepareString( handler, "SDPistolen = ?, ", TriadenSDPistolen )
+		querystr = querystr .. dbPrepareString( handler, "PistolenMagazine = ?, ", TriadenPistolenMagazine )
+		querystr = querystr .. dbPrepareString( handler, "DesertEagles = ?, ", TriadenDesertEagles )
+		querystr = querystr .. dbPrepareString( handler, "DesertEagleMunition = ?, ", TriadenDesertEagleMunition )
+		querystr = querystr .. dbPrepareString( handler, "Schrotflinten = ?, ", TriadenSchrotflinten )
+		querystr = querystr .. dbPrepareString( handler, "SchrotflintenMunition = ?, ", TriadenSchrotflintenMunition )
+		querystr = querystr .. dbPrepareString( handler, "MP = ?, ", TriadenMP )
+		querystr = querystr .. dbPrepareString( handler, "MPMunition = ?, ", TriadenMPMunition )
+		querystr = querystr .. dbPrepareString( handler, "AK = ?, ", TriadenAK )
+		querystr = querystr .. dbPrepareString( handler, "M = ?, ", TriadenM )
+		querystr = querystr .. dbPrepareString( handler, "MMunition = ?, ", TriadenMMunition )
+		querystr = querystr .. dbPrepareString( handler, "Gewehre = ?, ", TriadenGewehre )
+		querystr = querystr .. dbPrepareString( handler, "GewehrPatronen = ?, ", TriadenGewehrPatronen )
+		querystr = querystr .. dbPrepareString( handler, "SGewehr = ?, ", TriadenSGewehr )
+		querystr = querystr .. dbPrepareString( handler, "SgewehrMunition = ?, ", TriadenSGewehrMunition )
+		querystr = querystr .. dbPrepareString( handler, "Raketenwerfer = ?, ", TriadenRaketenwerfer )
+		querystr = querystr .. dbPrepareString( handler, "Raketen = ?, ", TriadenRaketen )
+		querystr = querystr .. dbPrepareString( handler, "Spezwaffen = ? ", TriadenSpezwaffen )
+		querystr = querystr .. dbPrepareString( handler, "WHERE Fraktion LIKE 'Triaden'" )
+		dbExec( handler, querystr )
+
+		dbQuery( TriadenDeliver_func_DB2, { veh }, handler, "SELECT DepotGeld FROM fraktionen WHERE Name LIKE 'Triaden'" )
+	end
+end
+
+
 function TriadenDeliver_func ( player, dim )
    
 	local veh = getPedOccupiedVehicle ( player )
@@ -16,84 +86,8 @@ function TriadenDeliver_func ( player, dim )
 				
 					mafiatransport = 0
 					
-					TriadenSchlagringe = MySQL_GetString("fraktionswaffen", "Schlagringe", "Fraktion LIKE 'Triaden'")
-					TriadenBaseballschlaeger = MySQL_GetString("fraktionswaffen", "Baseballschlaeger", "Fraktion LIKE 'Triaden'")
-					TriadenMesser = MySQL_GetString("fraktionswaffen", "Messer", "Fraktion LIKE 'Triaden'")
-					TriadenSchaufeln = MySQL_GetString("fraktionswaffen", "Schaufeln", "Fraktion LIKE 'Triaden'")
-					TriadenPistolen = MySQL_GetString("fraktionswaffen", "Pistolen", "Fraktion LIKE 'Triaden'")
-					TriadenSDPistolen = MySQL_GetString("fraktionswaffen", "SDPistolen", "Fraktion LIKE 'Triaden'")
-					TriadenPistolenMagazine = MySQL_GetString("fraktionswaffen", "PistolenMagazine", "Fraktion LIKE 'Triaden'")
-					TriadenDesertEagles = MySQL_GetString("fraktionswaffen", "DesertEagles", "Fraktion LIKE 'Triaden'")
-					TriadenDesertEagleMunition = MySQL_GetString("fraktionswaffen", "DesertEagleMunition", "Fraktion LIKE 'Triaden'")
-					TriadenSchrotflinten = MySQL_GetString("fraktionswaffen", "Schrotflinten", "Fraktion LIKE 'Triaden'")
-					TriadenSchrotflintenMunition = MySQL_GetString("fraktionswaffen", "SchrotflintenMunition", "Fraktion LIKE 'Triaden'")
-					TriadenMP = MySQL_GetString("fraktionswaffen", "MP", "Fraktion LIKE 'Triaden'")
-					TriadenMPMunition = MySQL_GetString("fraktionswaffen", "MPMunition", "Fraktion LIKE 'Triaden'")
-					TriadenAK = MySQL_GetString("fraktionswaffen", "AK", "Fraktion LIKE 'Triaden'")
-					TriadenAKMunition = MySQL_GetString("fraktionswaffen", "AKMunition", "Fraktion LIKE 'Triaden'")
-					TriadenM = MySQL_GetString("fraktionswaffen", "M", "Fraktion LIKE 'Triaden'")
-					TriadenMMunition = MySQL_GetString("fraktionswaffen", "MMunition", "Fraktion LIKE 'Triaden'")
-					TriadenGewehre = MySQL_GetString("fraktionswaffen", "Gewehre", "Fraktion LIKE 'Triaden'")
-					TriadenGewehrPatronen = MySQL_GetString("fraktionswaffen", "GewehrPatronen", "Fraktion LIKE 'Triaden'")
-					TriadenSGewehr = MySQL_GetString("fraktionswaffen", "SGewehr", "Fraktion LIKE 'Triaden'")
-					TriadenSGewehrMunition = MySQL_GetString("fraktionswaffen", "SGewehrMunition", "Fraktion LIKE 'Triaden'")
-					TriadenRaketenwerfer = MySQL_GetString("fraktionswaffen", "Raketenwerfer", "Fraktion LIKE 'Triaden'")
-					TriadenRaketen = MySQL_GetString("fraktionswaffen", "Raketen", "Fraktion LIKE 'Triaden'")
-					TriadenSpezwaffen = MySQL_GetString("fraktionswaffen", "Spezwaffen", "Fraktion LIKE 'Triaden'")
-					TriadenFamkasse = tonumber(MySQL_GetString("fraktionen", "DepotGeld", "Name LIKE 'Triaden'"))
-					
-					MySQL_SetString("fraktionswaffen", "Schlagringe", vioGetElementData ( veh, "schlagringe" )+TriadenSchlagringe, "Fraktion LIKE 'Triaden'")
-					MySQL_SetString("fraktionswaffen", "Baseballschlaeger", vioGetElementData ( veh, "baseball" )+TriadenBaseballschlaeger, "Fraktion LIKE 'Triaden'")
-					MySQL_SetString("fraktionswaffen", "Messer", vioGetElementData ( veh, "knife" )+TriadenMesser, "Fraktion LIKE 'Triaden'")
-					MySQL_SetString("fraktionswaffen", "Schaufeln", vioGetElementData ( veh, "shovels" )+TriadenSchaufeln, "Fraktion LIKE 'Triaden'")
-					MySQL_SetString("fraktionswaffen", "Pistolen", vioGetElementData ( veh, "pistol" )+TriadenPistolen, "Fraktion LIKE 'Triaden'")
-					MySQL_SetString("fraktionswaffen", "SDPistolen", vioGetElementData ( veh, "sdpistol" )+TriadenSDPistolen, "Fraktion LIKE 'Triaden'")
-					MySQL_SetString("fraktionswaffen", "PistolenMagazine", vioGetElementData ( veh, "pistolammo" )+TriadenPistolenMagazine, "Fraktion LIKE 'Triaden'")
-					MySQL_SetString("fraktionswaffen", "DesertEagles", vioGetElementData ( veh, "eagle" )+TriadenDesertEagles, "Fraktion LIKE 'Triaden'")
-					MySQL_SetString("fraktionswaffen", "DesertEagleMunition", vioGetElementData ( veh, "eagleammo" )+TriadenDesertEagleMunition, "Fraktion LIKE 'Triaden'")
-					MySQL_SetString("fraktionswaffen", "Schrotflinten", vioGetElementData ( veh, "shotgun" )+TriadenSchrotflinten, "Fraktion LIKE 'Triaden'")
-					MySQL_SetString("fraktionswaffen", "SchrotflintenMunition", vioGetElementData ( veh, "shotgunammo" )+TriadenSchrotflintenMunition, "Fraktion LIKE 'Triaden'")
-					MySQL_SetString("fraktionswaffen", "MP", vioGetElementData ( veh, "mp" )+TriadenMP, "Fraktion LIKE 'Triaden'")
-					MySQL_SetString("fraktionswaffen", "MPMunition", vioGetElementData ( veh, "mpammo" )+TriadenMPMunition, "Fraktion LIKE 'Triaden'")
-					MySQL_SetString("fraktionswaffen", "AK", vioGetElementData ( veh, "ak" )+TriadenAK, "Fraktion LIKE 'Triaden'")
-					MySQL_SetString("fraktionswaffen", "AKMunition", vioGetElementData ( veh, "akammo" )+TriadenAKMunition, "Fraktion LIKE 'Triaden'")
-					MySQL_SetString("fraktionswaffen", "M", vioGetElementData ( veh, "m" )+TriadenM, "Fraktion LIKE 'Triaden'")
-					MySQL_SetString("fraktionswaffen", "MMunition", vioGetElementData ( veh, "mammo" )+TriadenMMunition, "Fraktion LIKE 'Triaden'")
-					MySQL_SetString("fraktionswaffen", "Gewehre", vioGetElementData ( veh, "gewehr" )+TriadenGewehre, "Fraktion LIKE 'Triaden'")
-					MySQL_SetString("fraktionswaffen", "GewehrPatronen", vioGetElementData ( veh, "gewehrammo" )+TriadenGewehrPatronen, "Fraktion LIKE 'Triaden'")
-					MySQL_SetString("fraktionswaffen", "SGewehr", vioGetElementData ( veh, "sgewehr" )+TriadenSGewehr, "Fraktion LIKE 'Triaden'")
-					MySQL_SetString("fraktionswaffen", "SgewehrMunition", vioGetElementData ( veh, "sgewehrammo" )+TriadenSGewehrMunition, "Fraktion LIKE 'Triaden'")
-					MySQL_SetString("fraktionswaffen", "Raketenwerfer", vioGetElementData ( veh, "rakwerfer" )+TriadenRaketenwerfer, "Fraktion LIKE 'Triaden'")
-					MySQL_SetString("fraktionswaffen", "Raketen", vioGetElementData ( veh, "rak" )+TriadenRaketen, "Fraktion LIKE 'Triaden'")
-					MySQL_SetString("fraktionswaffen", "Spezwaffen", vioGetElementData ( veh, "spezgun" )+TriadenSpezwaffen, "Fraktion LIKE 'Triaden'")
-					
-					TriadenSchlagringe = MySQL_GetString("fraktionswaffen", "Schlagringe", "Fraktion LIKE 'Triaden'")
-					TriadenBaseballschlaeger = MySQL_GetString("fraktionswaffen", "Baseballschlaeger", "Fraktion LIKE 'Triaden'")
-					TriadenMesser = MySQL_GetString("fraktionswaffen", "Messer", "Fraktion LIKE 'Triaden'")
-					TriadenSchaufeln = MySQL_GetString("fraktionswaffen", "Schaufeln", "Fraktion LIKE 'Triaden'")
-					TriadenPistolen = MySQL_GetString("fraktionswaffen", "Pistolen", "Fraktion LIKE 'Triaden'")
-					TriadenSDPistolen = MySQL_GetString("fraktionswaffen", "SDPistolen", "Fraktion LIKE 'Triaden'")
-					TriadenPistolenMagazine = MySQL_GetString("fraktionswaffen", "PistolenMagazine", "Fraktion LIKE 'Triaden'")
-					TriadenDesertEagles = MySQL_GetString("fraktionswaffen", "DesertEagles", "Fraktion LIKE 'Triaden'")
-					TriadenDesertEagleMunition = MySQL_GetString("fraktionswaffen", "DesertEagleMunition", "Fraktion LIKE 'Triaden'")
-					TriadenSchrotflinten = MySQL_GetString("fraktionswaffen", "Schrotflinten", "Fraktion LIKE 'Triaden'")
-					TriadenSchrotflintenMunition = MySQL_GetString("fraktionswaffen", "SchrotflintenMunition", "Fraktion LIKE 'Triaden'")
-					TriadenMP = MySQL_GetString("fraktionswaffen", "MP", "Fraktion LIKE 'Triaden'")
-					TriadenMPMunition = MySQL_GetString("fraktionswaffen", "MPMunition", "Fraktion LIKE 'Triaden'")
-					TriadenAK = MySQL_GetString("fraktionswaffen", "AK", "Fraktion LIKE 'Triaden'")
-					TriadenAKMunition = MySQL_GetString("fraktionswaffen", "AKMunition", "Fraktion LIKE 'Triaden'")
-					TriadenM = MySQL_GetString("fraktionswaffen", "M", "Fraktion LIKE 'Triaden'")
-					TriadenMMunition = MySQL_GetString("fraktionswaffen", "MMunition", "Fraktion LIKE 'Triaden'")
-					TriadenGewehre = MySQL_GetString("fraktionswaffen", "Gewehre", "Fraktion LIKE 'Triaden'")
-					TriadenGewehrPatronen = MySQL_GetString("fraktionswaffen", "GewehrPatronen", "Fraktion LIKE 'Triaden'")
-					TriadenSGewehr = MySQL_GetString("fraktionswaffen", "SGewehr", "Fraktion LIKE 'Triaden'")
-					TriadenSGewehrMunition = MySQL_GetString("fraktionswaffen", "SGewehrMunition", "Fraktion LIKE 'Triaden'")
-					TriadenRaketenwerfer = MySQL_GetString("fraktionswaffen", "Raketenwerfer", "Fraktion LIKE 'Triaden'")
-					TriadenRaketen = MySQL_GetString("fraktionswaffen", "Raketen", "Fraktion LIKE 'Triaden'")
-					TriadenSpezwaffen = MySQL_GetString("fraktionswaffen", "Spezwaffen", "Fraktion LIKE 'Triaden'")
-					TriadenFamkasse = TriadenFamkasse - vioGetElementData ( veh, "costs" )
-					
-					MySQL_SetString("fraktionen", "DepotGeld", TriadenFamkasse, "Name LIKE 'Triaden'")
+					dbQuery( TriadenDeliver_func_DB1, { player, dim, veh }, handler, "SELECT * FROM fraktionswaffen WHERE Fraktion LIKE 'Triaden'" )
+
 					outputChatBox ( "Lieferung abgegeben - Du erhaelst "..vioGetElementData ( veh, "costs" ).." $ aus der Familienkasse! zurueck!", player, 0, 125, 0 )
 					vioSetElementData ( player, "money", vioGetElementData ( player, "money" ) + vioGetElementData ( veh, "costs" ) )
 					givePlayerMoney ( player, vioGetElementData ( veh, "costs" ) )
@@ -103,7 +97,7 @@ function TriadenDeliver_func ( player, dim )
 							vioSetElementData ( player, "gunloads", "done" )																									-- Achiev: Waffenschieber
 							triggerClientEvent ( player, "showAchievmentBox", player, "Waffenschieber", 50, 10000 )															-- Achiev: Waffenschieber
 							vioSetElementData ( player, "bonuspoints", tonumber(vioGetElementData ( player, "bonuspoints" )) + 50 )												-- Achiev: Waffenschieber
-							MySQL_SetString("achievments", "Waffenschieber", vioGetElementData ( player, "gunloads" ), "Name LIKE '"..getPlayerName(player).."'")				-- Achiev: Waffenschieber
+							dbExec( handler, "UPDATE achievments SET Waffenschieber=? WHERE Name LIKE ?", vioGetElementData ( player, "gunloads" ), getPlayerName(player) )				-- Achiev: Waffenschieber
 						end																																					-- Achiev: Waffenschieber
 					end																																						-- Achiev: Waffenschieber
 					triggerClientEvent ( player, "HudEinblendenMoney", getRootElement() )
@@ -134,11 +128,10 @@ addEventHandler ( "onMarkerHit", TriadenGunshopEnter, TriadenGunshopEnter_func )
 addEventHandler ( "onMarkerHit", TriadenGunshopEnterCasino, TriadenGunshopEnter_func )
 
 
-function gunbuyTriaden_func ( player, itemtype, item,  w0, w1, w2, w3, w4, w5, w6, w7 )
-
-	local success = 0
-	if player == client or not client then
-		TriadenFamkasse = tonumber(MySQL_GetString("fraktionen", "DepotGeld", "Name LIKE 'Triaden'"))
+local function gunbuyTriaden_func_DB ( qh, player, itemtype, item, w0, w1, w2, w3, w4, w5, w6, w7 ) 
+	local result = dbPoll( qh, 0 )
+	if result and result[1] then
+		TriadenFamkasse = result[1]["DepotGeld"]
 		if itemtype == "armor" then
 			if vioGetElementData ( player, "money" ) >= armor_price then
 				vioSetElementData ( player, "money", vioGetElementData ( player, "money" ) - armor_price )
@@ -749,7 +742,15 @@ function gunbuyTriaden_func ( player, itemtype, item,  w0, w1, w2, w3, w4, w5, w
 		if success == 1 then 
 			playSoundFrontEnd ( player, 40 )
 		end
-		MySQL_SetString("fraktionen", "DepotGeld", TriadenFamkasse, "Name LIKE 'Triaden'")
+		dbExec( handler, "UPDATE fraktionen SET DepotGeld=? WHERE Name LIKE 'Triaden'", TriadenFamkasse )
+	end
+end
+
+function gunbuyTriaden_func ( player, itemtype, item,  w0, w1, w2, w3, w4, w5, w6, w7 )
+
+	local success = 0
+	if player == client or not client then
+		dbQuery( gunbuyTriaden_func_DB, { player, itemtype, w0, w1, w2, w3, w4, w5, w6, w7 }, handler, "SELECT DepotGeld FROM fraktionen WHERE Name LIKE 'Triaden'" )
 	end
 end
 addEvent ( "gunbuyTriaden", true )

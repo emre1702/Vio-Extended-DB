@@ -1,4 +1,35 @@
-﻿function LizenzKaufen_func ( player, lizens )
+﻿local function LizenzKaufen_func_wschein_DB ( qh, player, lizens, pname )
+	local result = dbPoll( qh, 0 )
+	if result and result[1] then
+		local string = tonumber ( result[1]["Time"] )
+		if not string then
+			vioSetElementData ( player, "money", vioGetElementData ( player, "money" ) - 1495 )
+			triggerClientEvent ( player, "infobox_start", getRootElement(), "\n\nWaffenschein beantragt\n- du kannst ihn in\n48 Stunden abholen.", 5000, 0, 255, 0 )
+			playSoundFrontEnd ( player, 40 )
+			takePlayerMoney ( player, 1495 )
+			triggerClientEvent ( player, "HudEinblendenMoney", getRootElement() )
+			dbExec( handler, "INSERT INTO gunlicense ( Name, Time ) VALUES ( ?, ? )", pname, getMinTime() )
+		else
+			local timeToWait = string - getMinTime () + 48 * 60
+			if timeToWait > 0 then
+				local hours, mins
+				hours = math.floor ( timeToWait / 60 )
+				mins = timeToWait - hours * 60
+				infobox ( player, "\nDu hast bereits\neinen Schein beantragt\nund musst noch\n"..hours..":"..mins.." warten.", 5000, 125, 0, 0 )
+			else
+				playSoundFrontEnd ( player, 40 )
+				vioSetElementData ( player, "gunlicense", 1 )
+				prompt ( player, "Du hast soeben deinen Waffenschein erhalten,\nder dich zum Besitz einer Waffe berechtigt.\nTraegst du deine Waffen offen, so wird die\nPolizei sie dir abnehmen.\nFalls du zu oft negativ auffaellst ( z.b.\ndurch Schiesserein ), koennen sie dir ihn\nauch wieder abnehmen.\n\nAusserdem: GRUNDLOSES Toeten von Spielern ist verboten.\nGruende sind nicht: Geldgier, \"Hat mich angeguggt\"\nusw., sondern z.b. Selbstverteidigung oder Gangkriege.", 30 )
+				dbExec( handler, "UPDATE userdata SET Waffenschein = ? WHERE Name LIKE ?", vioGetElementData ( player, "gunlicense" ), pname )
+				dbExec( handler, "DELETE FROM gunlicense WHERE Name LIKE ?", pname )
+			end
+		end
+		checkAchievLicense ( player )
+	end
+end
+
+
+function LizenzKaufen_func ( player, lizens )
 
 	if player == client then
 		local pname = getPlayerName ( player )
@@ -11,7 +42,7 @@
 						triggerClientEvent ( player, "infobox_start", getRootElement(), "\n\nFluglizens\nTyp B erhalten!", 5000, 0, 255, 0 )
 						playSoundFrontEnd ( player, 40 )
 						takePlayerMoney ( player, 34950 )
-						MySQL_SetString("userdata", "FlugscheinKlasseB", vioGetElementData ( player, "planelicenseb" ), "Name LIKE '"..pname.."'")
+						dbExec( handler, "UPDATE userdata SET FlugscheinKlasseB = ? WHERE Name LIKE ?", vioGetElementData ( player, "planelicenseb" ), pname )
 						triggerClientEvent ( player, "HudEinblendenMoney", getRootElement() )
 					else
 						triggerClientEvent ( player, "infobox_start", getRootElement(), "Du benoetigst\nzuerst einen\nFlugschein Typ A!", 5000, 255, 0, 0 )
@@ -26,29 +57,7 @@
 			if tonumber(vioGetElementData ( player, "gunlicense" )) == 0 then
 				if tonumber(vioGetElementData ( player, "money" )) >= 1495 then
 					if tonumber(vioGetElementData ( player, "playingtime" )) >= 180 then
-						local string = tonumber ( MySQL_GetString ( "gunlicense", "Time", "Name LIKE '"..pname.."'" ) )
-						if not string then
-							vioSetElementData ( player, "money", vioGetElementData ( player, "money" ) - 1495 )
-							triggerClientEvent ( player, "infobox_start", getRootElement(), "\n\nWaffenschein beantragt\n- du kannst ihn in\n48 Stunden abholen.", 5000, 0, 255, 0 )
-							playSoundFrontEnd ( player, 40 )
-							takePlayerMoney ( player, 1495 )
-							triggerClientEvent ( player, "HudEinblendenMoney", getRootElement() )
-							mysql_vio_query ( "INSERT INTO gunlicense ( Name, Time ) VALUES ( '"..pname.."', '"..getMinTime().."' )" )
-						else
-							local timeToWait = string - getMinTime () + 48 * 60
-							if timeToWait > 0 then
-								local hours, mins
-								hours = math.floor ( timeToWait / 60 )
-								mins = timeToWait - hours * 60
-								infobox ( player, "\nDu hast bereits\neinen Schein beantragt\nund musst noch\n"..hours..":"..mins.." warten.", 5000, 125, 0, 0 )
-							else
-								playSoundFrontEnd ( player, 40 )
-								vioSetElementData ( player, "gunlicense", 1 )
-								prompt ( player, "Du hast soeben deinen Waffenschein erhalten,\nder dich zum Besitz einer Waffe berechtigt.\nTraegst du deine Waffen offen, so wird die\nPolizei sie dir abnehmen.\nFalls du zu oft negativ auffaellst ( z.b.\ndurch Schiesserein ), koennen sie dir ihn\nauch wieder abnehmen.\n\nAusserdem: GRUNDLOSES Toeten von Spielern ist verboten.\nGruende sind nicht: Geldgier, \"Hat mich angeguggt\"\nusw., sondern z.b. Selbstverteidigung oder Gangkriege.", 30 )
-								MySQL_SetString("userdata", "Waffenschein", vioGetElementData ( player, "gunlicense" ), "Name LIKE '"..pname.."'")
-								mysql_vio_query ( "DELETE FROM gunlicense WHERE Name LIKE '"..pname.."'" )
-							end
-						end
+						dbQuery( LizenzKaufen_func_wschein_DB, { player, lizens, pname }, handler, "SELECT Time FROM gunlicense WHERE Name LIKE ?", pname )
 					else
 						triggerClientEvent ( player, "infobox_start", getRootElement(), "\n\nErst ab 3\nStunden verfuegbar!", 5000, 255, 0, 0 )
 					end
@@ -67,7 +76,7 @@
 					playSoundFrontEnd ( player, 40 )
 					takePlayerMoney ( player, 450 )
 					triggerClientEvent ( player, "HudEinblendenMoney", getRootElement() )
-					MySQL_SetString("userdata", "Motorradtfuehrerschein", vioGetElementData ( player, "bikelicense" ), "Name LIKE '"..pname.."'")
+					dbExec( handler, "UPDATE userdata SET Motorradtfuehrerschein = ? WHERE Name LIKE ?", vioGetElementData ( player, "bikelicense" ), pname )
 				else
 					triggerClientEvent ( player, "infobox_start", getRootElement(), "\nDu hast nicht\ngenug Geld!", 5000, 255, 0, 0 )
 				end
@@ -82,7 +91,7 @@
 					triggerClientEvent ( player, "infobox_start", getRootElement(), "\n\nFlugschein\nerhalten!", 5000, 0, 255, 0 )
 					playSoundFrontEnd ( player, 40 )
 					takePlayerMoney ( player, 15000 )
-					MySQL_SetString("userdata", "FlugscheinKlasseA", vioGetElementData ( player, "planelicensea" ), "Name LIKE '"..pname.."'")
+					dbExec( handler, "UPDATE userdata SET FlugscheinKlasseA = ? WHERE Name LIKE ?", vioGetElementData ( player, "planelicensea" ), pname )
 					triggerClientEvent ( player, "HudEinblendenMoney", getRootElement() )
 				else
 					triggerClientEvent ( player, "infobox_start", getRootElement(), "\nDu hast nicht\ngenug Geld!", 5000, 255, 0, 0 )
@@ -98,7 +107,7 @@
 					triggerClientEvent ( player, "infobox_start", getRootElement(), "\n\nAngelschein\nerhalten!", 5000, 0, 255, 0 )
 					playSoundFrontEnd ( player, 40 )
 					takePlayerMoney ( player, 79 )
-					MySQL_SetString("userdata", "Angelschein", vioGetElementData ( player, "fishinglicense" ), "Name LIKE '"..pname.."'")
+					dbExec( handler, "UPDATE userdata SET Angelschein = ? WHERE Name LIKE ?", vioGetElementData ( player, "fishinglicense" ), pname )
 					triggerClientEvent ( player, "HudEinblendenMoney", getRootElement() )
 				else
 					triggerClientEvent ( player, "infobox_start", getRootElement(), "\nDu hast nicht\ngenug Geld!", 5000, 255, 0, 0 )
@@ -133,7 +142,7 @@
 					triggerClientEvent ( player, "infobox_start", getRootElement(), "\n\nPersonalausweiss\nerhalten!", 5000, 0, 255, 0 )
 					playSoundFrontEnd ( player, 40 )
 					takePlayerMoney ( player, 40 )
-					MySQL_SetString("userdata", "Perso", vioGetElementData ( player, "perso" ), "Name LIKE '"..pname.."'")
+					dbExec( handler, "UPDATE userdata SET Perso = ? WHERE Name LIKE ?", vioGetElementData ( player, "perso" ), pname )
 					triggerClientEvent ( player, "HudEinblendenMoney", getRootElement() )
 				else
 					triggerClientEvent ( player, "infobox_start", getRootElement(), "\nDu hast nicht\ngenug Geld!", 5000, 255, 0, 0 )
@@ -151,7 +160,7 @@
 						playSoundFrontEnd ( player, 40 )
 						takePlayerMoney ( player, 450 )
 						triggerClientEvent ( player, "HudEinblendenMoney", getRootElement() )
-						MySQL_SetString("userdata", "LKWfuehrerschein", vioGetElementData ( player, "lkwlicense" ), "Name LIKE '"..pname.."'")
+						dbExec( handler, "UPDATE userdata SET LKWfuehrerschein = ? WHERE Name LIKE ?", vioGetElementData ( player, "lkwlicense" ), pname )
 					else
 						triggerClientEvent ( player, "infobox_start", getRootElement(), "Du benoetigst\nzuerst einen\nFuehrerschein!", 5000, 255, 0, 0 )
 					end
@@ -169,7 +178,7 @@
 					triggerClientEvent ( player, "infobox_start", getRootElement(), "\nHelikopter-\nflugschein\nerhalten!", 5000, 0, 255, 0 )
 					playSoundFrontEnd ( player, 40 )
 					takePlayerMoney ( player, 20000 )
-					MySQL_SetString("userdata", "Helikopterfuehrerschein", vioGetElementData ( player, "helilicense" ), "Name LIKE '"..pname.."'")
+					dbExec( handler, "UPDATE userdata SET Helikopterfuehrerschein = ? WHERE Name LIKE ?", vioGetElementData ( player, "helilicense" ), pname )
 					triggerClientEvent ( player, "HudEinblendenMoney", getRootElement() )
 				else
 					triggerClientEvent ( player, "infobox_start", getRootElement(), "\nDu hast nicht\ngenug Geld!", 5000, 255, 0, 0 )
@@ -186,7 +195,7 @@
 						triggerClientEvent ( player, "infobox_start", getRootElement(), "\n\nSegellizens\nerhalten!", 5000, 0, 255, 0 )
 						playSoundFrontEnd ( player, 40 )
 						takePlayerMoney ( player, 350 )
-						MySQL_SetString("userdata", "Segelschein", vioGetElementData ( player, "segellicense" ), "Name LIKE '"..pname.."'")
+						dbExec( handler, "UPDATE userdata SET Segelschein = ? WHERE Name LIKE ?", vioGetElementData ( player, "segellicense" ), pname )
 						triggerClientEvent ( player, "HudEinblendenMoney", getRootElement() )
 					else
 						triggerClientEvent ( player, "infobox_start", getRootElement(), "Du benoetigst\nzuerst einen\nMotorboot-\nfuehrerschein!", 5000, 255, 0, 0 )
@@ -205,7 +214,7 @@
 					triggerClientEvent ( player, "infobox_start", getRootElement(), "\nMotorboot-\nfuehrerschein\nerhalten!", 5000, 0, 255, 0 )
 					playSoundFrontEnd ( player, 40 )
 					takePlayerMoney ( player, 400 )
-					MySQL_SetString("userdata", "Motorbootschein", vioGetElementData ( player, "motorbootlicense" ), "Name LIKE '"..pname.."'")
+					dbExec( handler, "UPDATE userdata SET Motorbootschein = ? WHERE Name LIKE ?", vioGetElementData ( player, "motorbootlicense" ), pname )
 					triggerClientEvent ( player, "HudEinblendenMoney", getRootElement() )
 				else
 					triggerClientEvent ( player, "infobox_start", getRootElement(), "\nDu hast nicht\ngenug Geld!", 5000, 255, 0, 0 )
@@ -227,7 +236,7 @@ function checkAchievLicense ( player )
 			vioSetElementData ( player, "licenses_achiev", "done" )																								-- Achiev: Mr. License
 			triggerClientEvent ( player, "showAchievmentBox", player, " Mr. License", 40, 10000 )																-- Achiev: Mr. License
 			vioSetElementData ( player, "bonuspoints", tonumber(vioGetElementData ( player, "bonuspoints" )) + 40 )												-- Achiev: Mr. License
-			MySQL_SetString("achievments", "Lizensen", vioGetElementData ( player, "licenses_achiev" ), "Name LIKE '"..getPlayerName(player).."'")				-- Achiev: Mr. License
+			dbExec( handler, "UPDATE achievments SET Lizensen = ? WHERE Name LIKE ?", vioGetElementData ( player, "licenses_achiev" ), getPlayerName( player ) ) -- Achiev: Mr. License
 		end	
 	end
 end

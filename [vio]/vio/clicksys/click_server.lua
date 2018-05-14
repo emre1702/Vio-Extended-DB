@@ -27,10 +27,7 @@ addEvent ( "sprunkAutomatUse", true )
 addEventHandler ( "sprunkAutomatUse", getRootElement(), sprunkAutomatUse_func )
 
 function radiochange_func ( player, favchannel )
-
-	if tostring ( favchannel ) == MySQL_Save ( tostring ( favchannel ) ) then
-		vioSetElementData ( player, "favchannel", favchannel )
-	end
+	vioSetElementData ( player, "favchannel", favchannel )
 end
 addEvent ( "radiochange", true )
 addEventHandler ( "radiochange", getRootElement(), radiochange_func )

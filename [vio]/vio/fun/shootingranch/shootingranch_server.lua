@@ -100,7 +100,7 @@ function endShootingRanchTest_func ( percent, hit )
 			vioSetElementData ( player, "bonuspoints", vioGetElementData ( player, "bonuspoints" ) + 20 )
 			triggerClientEvent ( player, "showAchievmentBox", player, " Revolver-\n Held", 20, 10000 )
 			vioSetElementData ( player, "revolverheld_achiev", 1 )
-			MySQL_SetString ( "achievments", "Revolverheld", 1, "Name LIKE '"..pname.."'" )
+			dbExec( handler, "UPDATE achievments SET Revolverheld='1' WHERE Name LIKE ?", pname )
 		end
 	end
 	

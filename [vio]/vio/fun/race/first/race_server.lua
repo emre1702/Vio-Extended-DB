@@ -17,30 +17,37 @@ HotringRacer12 = "-986.73956298828|504.44668579102|1195.75512695313"
 
 stadionRaceEntrance = createMarker ( -2111, -444.266, 38.5, "corona", 1.2, 0, 125, 0, 225 )
 
-function highscore_func ( player )
 
+local function highscore_func_DB ( qh, player )
+	local result = dbPoll( qh, 0 )
+	if result then
+		p1name = result[1] and result[1]["Name"] or nil
+		p1ms = result[1] and result[1]["MilliSekunden"] or nil
+		p1s = result[1] and result[1]["Sekunden"] or nil
+		p1m = result[1] and result[1]["Minuten"] or nil
+		p2name = result[2] and result[2]["Name"] or nil
+		p2ms = result[2] and result[2]["MilliSekunden"] or nil
+		p2s = result[2] and result[2]["Sekunden"] or nil
+		p2m = result[2] and result[2]["Minuten"] or nil
+		p3name = result[3] and result[3]["Name"] or nil
+		p3ms = result[3] and result[3]["MilliSekunden"] or nil
+		p3s = result[3] and result[3]["Sekunden"] or nil
+		p3m = result[3] and result[3]["Minuten"] or nil
+		if p1name then
+			outputChatBox ( "Platz 1: "..p1name.." mit "..p1m..":"..p1s..":"..p1ms, player, 200, 200, 0 )
+		end
+		if p2name then
+			outputChatBox ( "Platz 2: "..p2name.." mit "..p2m..":"..p2s..":"..p2ms, player, 200, 200, 0 )
+		end
+		if p3name then
+			outputChatBox ( "Platz 3: "..p3name.." mit "..p3m..":"..p3s..":"..p3ms, player, 200, 200, 0 )
+		end
+	end
+end
+
+function highscore_func ( player )
 	outputChatBox ( "___Highscore (Canyon)___", player, 200, 200, 0 )
-	p1name = MySQL_GetString("racing", "Name", "Platz LIKE '1'")
-	p1ms = MySQL_GetString("racing", "MilliSekunden", "Platz LIKE '1'")
-	p1s = MySQL_GetString("racing", "Sekunden", "Platz LIKE '1'")
-	p1m = MySQL_GetString("racing", "Minuten", "Platz LIKE '1'")
-	p2name = MySQL_GetString("racing", "Name", "Platz LIKE '2'")
-	p2ms = MySQL_GetString("racing", "MilliSekunden", "Platz LIKE '2'")
-	p2s = MySQL_GetString("racing", "Sekunden", "Platz LIKE '2'")
-	p2m = MySQL_GetString("racing", "Minuten", "Platz LIKE '2'")
-	p3name = MySQL_GetString("racing", "Name", "Platz LIKE '3'")
-	p3ms = MySQL_GetString("racing", "MilliSekunden", "Platz LIKE '3'")
-	p3s = MySQL_GetString("racing", "Sekunden", "Platz LIKE '3'")
-	p3m = MySQL_GetString("racing", "Minuten", "Platz LIKE '3'")
-	if p1name then
-		outputChatBox ( "Platz 1: "..p1name.." mit "..p1m..":"..p1s..":"..p1ms, player, 200, 200, 0 )
-	end
-	if p2name then
-		outputChatBox ( "Platz 2: "..p2name.." mit "..p2m..":"..p2s..":"..p2ms, player, 200, 200, 0 )
-	end
-	if p3name then
-		outputChatBox ( "Platz 3: "..p3name.." mit "..p3m..":"..p3s..":"..p3ms, player, 200, 200, 0 )
-	end
+	dbQuery( highscore_func_DB, { player }, handler, "SELECT Name, MilliSekunden, Sekunden, Minuten FROM racing WHERE Platz BETWEEN 1 AND 3 ORDER BY Platz")
 end
 addCommandHandler ( "highscore", highscore_func )
 
@@ -121,49 +128,33 @@ function leaveHotringRacer ( player )
 end
 addEventHandler ( "onVehicleExit", getRootElement(), leaveHotringRacer )
 
-function raceFinished_func ( player, ms, s, m )
 
-	if player == client then
-		ms, s, m = tonumber ( ms ), tonumber ( s ), tonumber ( m )
-		if m < 2 or ( m == 2 and s < 10 ) then
-			mysql_vio_query("INSERT INTO ban ( Name, Admin, Grund, Datum, IP, Serial ) VALUES ( '"..getPlayerName ( player ).."', 'Anticheat', 'Speedhack', '"..timestamp().."', '"..getPlayerIP ( player ).."', '"..getPlayerSerial ( player ).."' )")
-			kickPlayer ( player, "Von: Anticheat, Grund: Speedhack (Gebannt!)" )
-			return false
-		end
-		pct = ms+s*10+m*1000
-		datatime = ms+s*10+m*1000
-		pname = getPlayerName ( player )
-		outputChatBox ( "Deine Zeit: "..m..":"..s..":"..ms.."!", player, 200, 200, 0 )
-		if datatime <= 3000 then
-			pricemoney = 50 + math.floor ( ( 3000 - datatime ) * 0.2 )
-			outputChatBox ( "Deine Zeit war besser, als der Durchschnitt - Du erhaelst "..pricemoney.." $ Preisgeld!", player, 0, 125, 0 )
-			vioSetElementData ( player, "money", tonumber(vioGetElementData ( player, "money" )) + pricemoney )
-			givePlayerMoney ( player, pricemoney )
-			triggerClientEvent ( player, "HudEinblendenMoney", getRootElement() )
-		end
-		p1name = MySQL_GetString("racing", "Name", "Platz LIKE '1'")
-		p1ms = tonumber ( MySQL_GetString("racing", "MilliSekunden", "Platz LIKE '1'") )
-		p1s = tonumber ( MySQL_GetString("racing", "Sekunden", "Platz LIKE '1'") )
-		p1m = tonumber ( MySQL_GetString("racing", "Minuten", "Platz LIKE '1'") )
+local function raceFinished_func_DB ( qh, player, ms, s, m, pct, pname )
+	local result = dbPoll( qh, 0 )
+	if result and result[1] then
+		p1name = result[1] and result[1]["Name"] or nil
+		p1ms = result[1] and tonumber( result[1]["MilliSekunden"] ) or nil
+		p1s = result[1] and tonumber( result[1]["Sekunden"] ) or nil
+		p1m = result[1] and tonumber( result[1]["Minuten"] ) or nil
+		p2name = result[2] and result[2]["Name"] or nil
+		p2ms = result[2] and tonumber( result[2]["MilliSekunden"] ) or nil
+		p2s = result[2] and tonumber( result[2]["Sekunden"] ) or nil
+		p2m = result[2] and tonumber( result[2]["Minuten"] ) or nil
+		p3name = result[3] and result[3]["Name"] or nil
+		p3ms = result[3] and tonumber( result[3]["MilliSekunden"] ) or nil
+		p3s = result[3] and tonumber( result[3]["Sekunden"] ) or nil
+		p3m = result[3] and tonumber( result[3]["Minuten"] ) or nil
 		if p1s then
 			p1t = p1ms+p1s*10+p1m*1000
 		end
-		p2name = MySQL_GetString("racing", "Name", "Platz LIKE '2'")
-		p2ms = tonumber ( MySQL_GetString("racing", "MilliSekunden", "Platz LIKE '2'") )
-		p2s = tonumber ( MySQL_GetString("racing", "Sekunden", "Platz LIKE '2'") )
-		p2m = tonumber ( MySQL_GetString("racing", "Minuten", "Platz LIKE '2'") )
 		if p2s then
 			p2t = p2ms+p2s*10+p2m*1000
 		end
-		p3name = MySQL_GetString("racing", "Name", "Platz LIKE '3'")
-		p3ms = tonumber ( MySQL_GetString("racing", "MilliSekunden", "Platz LIKE '3'") )
-		p3s = tonumber ( MySQL_GetString("racing", "Sekunden", "Platz LIKE '3'") )
-		p3m = tonumber ( MySQL_GetString("racing", "Minuten", "Platz LIKE '3'") )
 		if p3s then
 			p3t = p3ms+p3s*10+p3m*1000
 		end
 		if not p1name then
-			mysql_query(handler, "INSERT INTO racing (Name, MilliSekunden, Sekunden, Minuten, Platz) VALUES ('"..pname.."', '"..ms.."', '"..s.."', '"..m.."', '1')")
+			dbExec( handler, "INSERT INTO racing (Name, MilliSekunden, Sekunden, Minuten, Platz) VALUES (?, ?, ?, ?, '1')", pname, ms, s, m )
 		else
 			if pct < p1t then
 				if p2t then
@@ -181,7 +172,7 @@ function raceFinished_func ( player, ms, s, m )
 				p1m = m
 				p1name = pname
 			elseif not p2name then
-				mysql_query(handler, "INSERT INTO racing (Name, MilliSekunden, Sekunden, Minuten, Platz) VALUES ('"..pname.."', '"..ms.."', '"..s.."', '"..m.."', '2')")
+				dbExec( handler, "INSERT INTO racing (Name, MilliSekunden, Sekunden, Minuten, Platz) VALUES (?, ?, ?, ?, '2')", pname, ms, s, m )
 			else
 				if pct < p2t then
 					p3ms = p2ms
@@ -193,7 +184,7 @@ function raceFinished_func ( player, ms, s, m )
 					p2m = m
 					p2name = pname
 				elseif not p3name then
-					mysql_query(handler, "INSERT INTO racing (Name, MilliSekunden, Sekunden, Minuten, Platz) VALUES ('"..pname.."', '"..ms.."', '"..s.."', '"..m.."', '3')")
+					dbExec( handler, "INSERT INTO racing (Name, MilliSekunden, Sekunden, Minuten, Platz) VALUES (?, ?, ?, ?, '3')", pname, ms, s, m )
 				elseif pct < p3t then
 					p3ms = ms
 					p3s = s
@@ -203,45 +194,40 @@ function raceFinished_func ( player, ms, s, m )
 			end
 		end
 		if p1name then
-			MySQL_SetString("racing", "Name", p1name, "Platz LIKE '1'")
-			MySQL_SetString("racing", "MilliSekunden", p1ms, "Platz LIKE '1'")
-			MySQL_SetString("racing", "Sekunden", p1s, "Platz LIKE '1'")
-			MySQL_SetString("racing", "Minuten", p1m, "Platz LIKE '1'")
+			dbExec( handler, "UPDATE racing SET Name = ?, MilliSekunden = ?, Sekunden = ?, Minuten = ? WHERE Platz = 1", p1name, p1ms, p1s, p1m )
 		end
 		if p2name then
-			MySQL_SetString("racing", "Name", p2name, "Platz LIKE '2'")
-			MySQL_SetString("racing", "MilliSekunden", p2ms, "Platz LIKE '2'")
-			MySQL_SetString("racing", "Sekunden", p2s, "Platz LIKE '2'")
-			MySQL_SetString("racing", "Minuten", p2m, "Platz LIKE '2'")
+			dbExec( handler, "UPDATE racing SET Name = ?, MilliSekunden = ?, Sekunden = ?, Minuten = ? WHERE Platz = 2", p2name, p2ms, p2s, p2m )
 		end
 		if p3name then
-			MySQL_SetString("racing", "Name", p3name, "Platz LIKE '3'")
-			MySQL_SetString("racing", "MilliSekunden", p3ms, "Platz LIKE '3'")
-			MySQL_SetString("racing", "Sekunden", p3s, "Platz LIKE '3'")
-			MySQL_SetString("racing", "Minuten", p3m, "Platz LIKE '3'")
+			dbExec( handler, "UPDATE racing SET Name = ?, MilliSekunden = ?, Sekunden = ?, Minuten = ? WHERE Platz = 3", p3name, p3ms, p3s, p3m )
 		end
 		outputChatBox ( "___Highscore___", player, 200, 200, 0 )
-		p1name = MySQL_GetString("racing", "Name", "Platz LIKE '1'")
-		p1ms = MySQL_GetString("racing", "MilliSekunden", "Platz LIKE '1'")
-		p1s = MySQL_GetString("racing", "Sekunden", "Platz LIKE '1'")
-		p1m = MySQL_GetString("racing", "Minuten", "Platz LIKE '1'")
-		p2name = MySQL_GetString("racing", "Name", "Platz LIKE '2'")
-		p2ms = MySQL_GetString("racing", "MilliSekunden", "Platz LIKE '2'")
-		p2s = MySQL_GetString("racing", "Sekunden", "Platz LIKE '2'")
-		p2m = MySQL_GetString("racing", "Minuten", "Platz LIKE '2'")
-		p3name = MySQL_GetString("racing", "Name", "Platz LIKE '3'")
-		p3ms = MySQL_GetString("racing", "MilliSekunden", "Platz LIKE '3'")
-		p3s = MySQL_GetString("racing", "Sekunden", "Platz LIKE '3'")
-		p3m = MySQL_GetString("racing", "Minuten", "Platz LIKE '3'")
-		if p1name then
-			outputChatBox ( "Platz 1: "..p1name.." mit "..p1m..":"..p1s..":"..p1ms, player, 200, 200, 0 )
+		dbQuery( highscore_func_DB, { player }, handler, "SELECT Name, MilliSekunden, Sekunden, Minuten FROM racing WHERE Platz BETWEEN 1 AND 3 ORDER BY Platz" )
+	end
+end
+
+function raceFinished_func ( player, ms, s, m )
+
+	if player == client then
+		ms, s, m = tonumber ( ms ), tonumber ( s ), tonumber ( m )
+		if m < 2 or ( m == 2 and s < 10 ) then
+			dbExec( handler, "INSERT INTO ban ( Name, Admin, Grund, Datum, IP, Serial ) VALUES ( ?, 'Anticheat', 'Speedhack', '"..timestamp().."', ?, ? )", getPlayerName ( player ), getPlayerIP ( player ), getPlayerSerial( player ) )
+			kickPlayer ( player, "Von: Anticheat, Grund: Speedhack (Gebannt!)" )
+			return false
 		end
-		if p2name then
-			outputChatBox ( "Platz 2: "..p2name.." mit "..p2m..":"..p2s..":"..p2ms, player, 200, 200, 0 )
+		pct = ms+s*10+m*1000
+		datatime = ms+s*10+m*1000
+		pname = getPlayerName ( player )
+		outputChatBox ( "Deine Zeit: "..m..":"..s..":"..ms.."!", player, 200, 200, 0 )
+		if datatime <= 3000 then
+			pricemoney = 50 + math.floor ( ( 3000 - datatime ) * 0.2 )
+			outputChatBox ( "Deine Zeit war besser, als der Durchschnitt - Du erhaelst "..pricemoney.." $ Preisgeld!", player, 0, 125, 0 )
+			vioSetElementData ( player, "money", tonumber(vioGetElementData ( player, "money" )) + pricemoney )
+			givePlayerMoney ( player, pricemoney )
+			triggerClientEvent ( player, "HudEinblendenMoney", getRootElement() )
 		end
-		if p3name then
-			outputChatBox ( "Platz 3: "..p3name.." mit "..p3m..":"..p3s..":"..p3ms, player, 200, 200, 0 )
-		end
+		dbQuery( raceFinished_func_DB, { player, ms, s, m, pct, pname }, handler, "SELECT Name, MilliSekunden, Sekunden, Minuten FROM racing WHERE Platz BETWEEN 1 AND 3 ORDER BY Platz" )
 	end
 end
 addEvent ( "raceFinished", true )

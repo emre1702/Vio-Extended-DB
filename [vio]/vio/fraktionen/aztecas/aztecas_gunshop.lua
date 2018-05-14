@@ -4,6 +4,76 @@ setElementVisibleTo ( AztecasDeliver, getRootElement(), false )
 setElementVisibleTo ( AztecasDeliverBlip, getRootElement(), false )
 AztecasGunshopEnter = createMarker ( -772.33239746094, 2412.0576171875, 157.06886291504, "corona", 1, 0, 125, 0, getRootElement() )
 
+
+local function AztecasDeliver_func_DB2 ( qh, veh ) 
+	local result = dbPoll( qh, 0 )
+	if result and result[1] then
+		local d = result[1]
+		AztecasFamkasse = tonumber( d["DepotGeld"] ) - vioGetElementData ( veh, "costs" )
+		dbExec( handler, "UPDATE fraktionen SET DepotGeld = ? WHERE Name LIKE 'Aztecas'", AztecasFamkasse )
+	end
+end
+
+local function AztecasDeliver_func_DB1 ( qh, player, dim, veh ) 
+	local result = dbPoll( qh, 0 )
+	if result and result[1] then
+		local d = result[1]
+		AztecasSchlagringe = d["Schlagringe"] + vioGetElementData( veh, "schlagringe" )
+		AztecasBaseballschlaeger = d["Baseballschlaeger"] + vioGetElementData( veh, "baseball" )
+		AztecasMesser = d["Messer"] + vioGetElementData( veh, "knife" )
+		AztecasSchaufeln = d["Schaufeln"] + vioGetElementData( veh, "shovels" )
+		AztecasPistolen = d["Pistolen"] + vioGetElementData( veh, "pistol" )
+		AztecasSDPistolen = d["SDPistolen"] + vioGetElementData( veh, "sdpistol" )
+		AztecasPistolenMagazine = d["PistolenMagazine"] + vioGetElementData( veh, "pistolammo" )
+		AztecasDesertEagles = d["DesertEagles"] + vioGetElementData( veh, "eagle" )
+		AztecasDesertEagleMunition = d["DesertEagleMunition"] + vioGetElementData( veh, "eagleammo" )
+		AztecasSchrotflinten = d["Schrotflinten"] + vioGetElementData( veh, "shotgun" )
+		AztecasSchrotflintenMunition = d["SchrotflintenMunition"] + vioGetElementData( veh, "shotgunammo" )
+		AztecasMP = d["MP"] + vioGetElementData( veh, "mp" )
+		AztecasMPMunition = d["MPMunition"] + vioGetElementData( veh, "mpammo" )
+		AztecasAK = d["AK"] + vioGetElementData( veh, "ak" )
+		AztecasAKMunition = d["AKMunition"] + vioGetElementData( veh, "akammo" )
+		AztecasM = d["M"] + vioGetElementData( veh, "m" )
+		AztecasMMunition = d["MMunition"] + vioGetElementData( veh, "mammo" )
+		AztecasGewehre = d["Gewehre"] + vioGetElementData( veh, "gewehr" )
+		AztecasGewehrPatronen = d["GewehrPatronen"] + vioGetElementData( veh, "gewehrammo" )
+		AztecasSGewehr = d["SGewehr"] + vioGetElementData( veh, "sgewehr" )
+		AztecasSGewehrMunition = d["SGewehrMunition"] + vioGetElementData( veh, "sgewehrammo" )
+		AztecasRaketenwerfer = d["Raketenwerfer"] + vioGetElementData( veh, "rakwerfer" )
+		AztecasRaketen = d["Raketen"] + vioGetElementData( veh, "rak" )
+		AztecasSpezwaffen = d["Spezwaffen"] + vioGetElementData( veh, "spezgun" )
+		
+		local querystr = dbPrepareString( handler, "UPDATE fraktionswaffen SET Schlagringe = ?, ", AztecasSchlagringe )
+		querystr = querystr .. dbPrepareString( handler, "Baseballschlaeger = ?, ", AztecasBaseballschlaeger )
+		querystr = querystr .. dbPrepareString( handler, "Messer = ?, ", AztecasMesser )
+		querystr = querystr .. dbPrepareString( handler, "Schaufeln = ?, ", AztecasSchaufeln )
+		querystr = querystr .. dbPrepareString( handler, "Pistolen = ?, ", AztecasPistolen )
+		querystr = querystr .. dbPrepareString( handler, "SDPistolen = ?, ", AztecasSDPistolen )
+		querystr = querystr .. dbPrepareString( handler, "PistolenMagazine = ?, ", AztecasPistolenMagazine )
+		querystr = querystr .. dbPrepareString( handler, "DesertEagles = ?, ", AztecasDesertEagles )
+		querystr = querystr .. dbPrepareString( handler, "DesertEagleMunition = ?, ", AztecasDesertEagleMunition )
+		querystr = querystr .. dbPrepareString( handler, "Schrotflinten = ?, ", AztecasSchrotflinten )
+		querystr = querystr .. dbPrepareString( handler, "SchrotflintenMunition = ?, ", AztecasSchrotflintenMunition )
+		querystr = querystr .. dbPrepareString( handler, "MP = ?, ", AztecasMP )
+		querystr = querystr .. dbPrepareString( handler, "MPMunition = ?, ", AztecasMPMunition )
+		querystr = querystr .. dbPrepareString( handler, "AK = ?, ", AztecasAK )
+		querystr = querystr .. dbPrepareString( handler, "M = ?, ", AztecasM )
+		querystr = querystr .. dbPrepareString( handler, "MMunition = ?, ", AztecasMMunition )
+		querystr = querystr .. dbPrepareString( handler, "Gewehre = ?, ", AztecasGewehre )
+		querystr = querystr .. dbPrepareString( handler, "GewehrPatronen = ?, ", AztecasGewehrPatronen )
+		querystr = querystr .. dbPrepareString( handler, "SGewehr = ?, ", AztecasSGewehr )
+		querystr = querystr .. dbPrepareString( handler, "SgewehrMunition = ?, ", AztecasSGewehrMunition )
+		querystr = querystr .. dbPrepareString( handler, "Raketenwerfer = ?, ", AztecasRaketenwerfer )
+		querystr = querystr .. dbPrepareString( handler, "Raketen = ?, ", AztecasRaketen )
+		querystr = querystr .. dbPrepareString( handler, "Spezwaffen = ? ", AztecasSpezwaffen )
+		querystr = querystr .. dbPrepareString( handler, "WHERE Fraktion LIKE 'Aztecas'" )
+		dbExec( handler, querystr )
+
+		dbQuery( AztecasDeliver_func_DB2, { veh }, handler, "SELECT DepotGeld FROM fraktionen WHERE Name LIKE 'Aztecas'" )
+	end
+end
+
+
 function AztecasDeliver_func ( player, dim )
    
 	local veh = getPedOccupiedVehicle ( player )
@@ -14,84 +84,8 @@ function AztecasDeliver_func ( player, dim )
 				
 					mafiatransport = 0
 					
-					AztecasSchlagringe = MySQL_GetString("fraktionswaffen", "Schlagringe", "Fraktion LIKE 'Aztecas'")
-					AztecasBaseballschlaeger = MySQL_GetString("fraktionswaffen", "Baseballschlaeger", "Fraktion LIKE 'Aztecas'")
-					AztecasMesser = MySQL_GetString("fraktionswaffen", "Messer", "Fraktion LIKE 'Aztecas'")
-					AztecasSchaufeln = MySQL_GetString("fraktionswaffen", "Schaufeln", "Fraktion LIKE 'Aztecas'")
-					AztecasPistolen = MySQL_GetString("fraktionswaffen", "Pistolen", "Fraktion LIKE 'Aztecas'")
-					AztecasSDPistolen = MySQL_GetString("fraktionswaffen", "SDPistolen", "Fraktion LIKE 'Aztecas'")
-					AztecasPistolenMagazine = MySQL_GetString("fraktionswaffen", "PistolenMagazine", "Fraktion LIKE 'Aztecas'")
-					AztecasDesertEagles = MySQL_GetString("fraktionswaffen", "DesertEagles", "Fraktion LIKE 'Aztecas'")
-					AztecasDesertEagleMunition = MySQL_GetString("fraktionswaffen", "DesertEagleMunition", "Fraktion LIKE 'Aztecas'")
-					AztecasSchrotflinten = MySQL_GetString("fraktionswaffen", "Schrotflinten", "Fraktion LIKE 'Aztecas'")
-					AztecasSchrotflintenMunition = MySQL_GetString("fraktionswaffen", "SchrotflintenMunition", "Fraktion LIKE 'Aztecas'")
-					AztecasMP = MySQL_GetString("fraktionswaffen", "MP", "Fraktion LIKE 'Aztecas'")
-					AztecasMPMunition = MySQL_GetString("fraktionswaffen", "MPMunition", "Fraktion LIKE 'Aztecas'")
-					AztecasAK = MySQL_GetString("fraktionswaffen", "AK", "Fraktion LIKE 'Aztecas'")
-					AztecasAKMunition = MySQL_GetString("fraktionswaffen", "AKMunition", "Fraktion LIKE 'Aztecas'")
-					AztecasM = MySQL_GetString("fraktionswaffen", "M", "Fraktion LIKE 'Aztecas'")
-					AztecasMMunition = MySQL_GetString("fraktionswaffen", "MMunition", "Fraktion LIKE 'Aztecas'")
-					AztecasGewehre = MySQL_GetString("fraktionswaffen", "Gewehre", "Fraktion LIKE 'Aztecas'")
-					AztecasGewehrPatronen = MySQL_GetString("fraktionswaffen", "GewehrPatronen", "Fraktion LIKE 'Aztecas'")
-					AztecasSGewehr = MySQL_GetString("fraktionswaffen", "SGewehr", "Fraktion LIKE 'Aztecas'")
-					AztecasSGewehrMunition = MySQL_GetString("fraktionswaffen", "SGewehrMunition", "Fraktion LIKE 'Aztecas'")
-					AztecasRaketenwerfer = MySQL_GetString("fraktionswaffen", "Raketenwerfer", "Fraktion LIKE 'Aztecas'")
-					AztecasRaketen = MySQL_GetString("fraktionswaffen", "Raketen", "Fraktion LIKE 'Aztecas'")
-					AztecasSpezwaffen = MySQL_GetString("fraktionswaffen", "Spezwaffen", "Fraktion LIKE 'Aztecas'")
-					AztecasFamkasse = tonumber(MySQL_GetString("fraktionen", "DepotGeld", "Name LIKE 'Aztecas'"))
-					
-					MySQL_SetString("fraktionswaffen", "Schlagringe", vioGetElementData ( veh, "schlagringe" )+AztecasSchlagringe, "Fraktion LIKE 'Aztecas'")
-					MySQL_SetString("fraktionswaffen", "Baseballschlaeger", vioGetElementData ( veh, "baseball" )+AztecasBaseballschlaeger, "Fraktion LIKE 'Aztecas'")
-					MySQL_SetString("fraktionswaffen", "Messer", vioGetElementData ( veh, "knife" )+AztecasMesser, "Fraktion LIKE 'Aztecas'")
-					MySQL_SetString("fraktionswaffen", "Schaufeln", vioGetElementData ( veh, "shovels" )+AztecasSchaufeln, "Fraktion LIKE 'Aztecas'")
-					MySQL_SetString("fraktionswaffen", "Pistolen", vioGetElementData ( veh, "pistol" )+AztecasPistolen, "Fraktion LIKE 'Aztecas'")
-					MySQL_SetString("fraktionswaffen", "SDPistolen", vioGetElementData ( veh, "sdpistol" )+AztecasSDPistolen, "Fraktion LIKE 'Aztecas'")
-					MySQL_SetString("fraktionswaffen", "PistolenMagazine", vioGetElementData ( veh, "pistolammo" )+AztecasPistolenMagazine, "Fraktion LIKE 'Aztecas'")
-					MySQL_SetString("fraktionswaffen", "DesertEagles", vioGetElementData ( veh, "eagle" )+AztecasDesertEagles, "Fraktion LIKE 'Aztecas'")
-					MySQL_SetString("fraktionswaffen", "DesertEagleMunition", vioGetElementData ( veh, "eagleammo" )+AztecasDesertEagleMunition, "Fraktion LIKE 'Aztecas'")
-					MySQL_SetString("fraktionswaffen", "Schrotflinten", vioGetElementData ( veh, "shotgun" )+AztecasSchrotflinten, "Fraktion LIKE 'Aztecas'")
-					MySQL_SetString("fraktionswaffen", "SchrotflintenMunition", vioGetElementData ( veh, "shotgunammo" )+AztecasSchrotflintenMunition, "Fraktion LIKE 'Aztecas'")
-					MySQL_SetString("fraktionswaffen", "MP", vioGetElementData ( veh, "mp" )+AztecasMP, "Fraktion LIKE 'Aztecas'")
-					MySQL_SetString("fraktionswaffen", "MPMunition", vioGetElementData ( veh, "mpammo" )+AztecasMPMunition, "Fraktion LIKE 'Aztecas'")
-					MySQL_SetString("fraktionswaffen", "AK", vioGetElementData ( veh, "ak" )+AztecasAK, "Fraktion LIKE 'Aztecas'")
-					MySQL_SetString("fraktionswaffen", "AKMunition", vioGetElementData ( veh, "akammo" )+AztecasAKMunition, "Fraktion LIKE 'Aztecas'")
-					MySQL_SetString("fraktionswaffen", "M", vioGetElementData ( veh, "m" )+AztecasM, "Fraktion LIKE 'Aztecas'")
-					MySQL_SetString("fraktionswaffen", "MMunition", vioGetElementData ( veh, "mammo" )+AztecasMMunition, "Fraktion LIKE 'Aztecas'")
-					MySQL_SetString("fraktionswaffen", "Gewehre", vioGetElementData ( veh, "gewehr" )+AztecasGewehre, "Fraktion LIKE 'Aztecas'")
-					MySQL_SetString("fraktionswaffen", "GewehrPatronen", vioGetElementData ( veh, "gewehrammo" )+AztecasGewehrPatronen, "Fraktion LIKE 'Aztecas'")
-					MySQL_SetString("fraktionswaffen", "SGewehr", vioGetElementData ( veh, "sgewehr" )+AztecasSGewehr, "Fraktion LIKE 'Aztecas'")
-					MySQL_SetString("fraktionswaffen", "SgewehrMunition", vioGetElementData ( veh, "sgewehrammo" )+AztecasSGewehrMunition, "Fraktion LIKE 'Aztecas'")
-					MySQL_SetString("fraktionswaffen", "Raketenwerfer", vioGetElementData ( veh, "rakwerfer" )+AztecasRaketenwerfer, "Fraktion LIKE 'Aztecas'")
-					MySQL_SetString("fraktionswaffen", "Raketen", vioGetElementData ( veh, "rak" )+AztecasRaketen, "Fraktion LIKE 'Aztecas'")
-					MySQL_SetString("fraktionswaffen", "Spezwaffen", vioGetElementData ( veh, "spezgun" )+AztecasSpezwaffen, "Fraktion LIKE 'Aztecas'")
-					
-					AztecasSchlagringe = MySQL_GetString("fraktionswaffen", "Schlagringe", "Fraktion LIKE 'Aztecas'")
-					AztecasBaseballschlaeger = MySQL_GetString("fraktionswaffen", "Baseballschlaeger", "Fraktion LIKE 'Aztecas'")
-					AztecasMesser = MySQL_GetString("fraktionswaffen", "Messer", "Fraktion LIKE 'Aztecas'")
-					AztecasSchaufeln = MySQL_GetString("fraktionswaffen", "Schaufeln", "Fraktion LIKE 'Aztecas'")
-					AztecasPistolen = MySQL_GetString("fraktionswaffen", "Pistolen", "Fraktion LIKE 'Aztecas'")
-					AztecasSDPistolen = MySQL_GetString("fraktionswaffen", "SDPistolen", "Fraktion LIKE 'Aztecas'")
-					AztecasPistolenMagazine = MySQL_GetString("fraktionswaffen", "PistolenMagazine", "Fraktion LIKE 'Aztecas'")
-					AztecasDesertEagles = MySQL_GetString("fraktionswaffen", "DesertEagles", "Fraktion LIKE 'Aztecas'")
-					AztecasDesertEagleMunition = MySQL_GetString("fraktionswaffen", "DesertEagleMunition", "Fraktion LIKE 'Aztecas'")
-					AztecasSchrotflinten = MySQL_GetString("fraktionswaffen", "Schrotflinten", "Fraktion LIKE 'Aztecas'")
-					AztecasSchrotflintenMunition = MySQL_GetString("fraktionswaffen", "SchrotflintenMunition", "Fraktion LIKE 'Aztecas'")
-					AztecasMP = MySQL_GetString("fraktionswaffen", "MP", "Fraktion LIKE 'Aztecas'")
-					AztecasMPMunition = MySQL_GetString("fraktionswaffen", "MPMunition", "Fraktion LIKE 'Aztecas'")
-					AztecasAK = MySQL_GetString("fraktionswaffen", "AK", "Fraktion LIKE 'Aztecas'")
-					AztecasAKMunition = MySQL_GetString("fraktionswaffen", "AKMunition", "Fraktion LIKE 'Aztecas'")
-					AztecasM = MySQL_GetString("fraktionswaffen", "M", "Fraktion LIKE 'Aztecas'")
-					AztecasMMunition = MySQL_GetString("fraktionswaffen", "MMunition", "Fraktion LIKE 'Aztecas'")
-					AztecasGewehre = MySQL_GetString("fraktionswaffen", "Gewehre", "Fraktion LIKE 'Aztecas'")
-					AztecasGewehrPatronen = MySQL_GetString("fraktionswaffen", "GewehrPatronen", "Fraktion LIKE 'Aztecas'")
-					AztecasSGewehr = MySQL_GetString("fraktionswaffen", "SGewehr", "Fraktion LIKE 'Aztecas'")
-					AztecasSGewehrMunition = MySQL_GetString("fraktionswaffen", "SGewehrMunition", "Fraktion LIKE 'Aztecas'")
-					AztecasRaketenwerfer = MySQL_GetString("fraktionswaffen", "Raketenwerfer", "Fraktion LIKE 'Aztecas'")
-					AztecasRaketen = MySQL_GetString("fraktionswaffen", "Raketen", "Fraktion LIKE 'Aztecas'")
-					AztecasSpezwaffen = MySQL_GetString("fraktionswaffen", "Spezwaffen", "Fraktion LIKE 'Aztecas'")
-					AztecasFamkasse = AztecasFamkasse - vioGetElementData ( veh, "costs" )
-					
-					MySQL_SetString("fraktionen", "DepotGeld", AztecasFamkasse, "Name LIKE 'Aztecas'")
+					dbQuery( AztecasDeliver_func_DB1, { player, dim, veh }, handler, "SELECT * FROM fraktionswaffen WHERE Fraktion LIKE 'Aztecas'" )
+
 					outputChatBox ( "Lieferung abgegeben - Du erhaelst "..vioGetElementData ( veh, "costs" ).." $ aus der Familienkasse! zurueck!", player, 0, 125, 0 )
 					vioSetElementData ( player, "money", vioGetElementData ( player, "money" ) + vioGetElementData ( veh, "costs" ) )
 					givePlayerMoney ( player, vioGetElementData ( veh, "costs" ) )
@@ -101,7 +95,7 @@ function AztecasDeliver_func ( player, dim )
 							vioSetElementData ( player, "gunloads", "done" )																									-- Achiev: Waffenschieber
 							triggerClientEvent ( player, "showAchievmentBox", player, "Waffenschieber", 50, 10000 )															-- Achiev: Waffenschieber
 							vioSetElementData ( player, "bonuspoints", tonumber(vioGetElementData ( player, "bonuspoints" )) + 50 )												-- Achiev: Waffenschieber
-							MySQL_SetString("achievments", "Waffenschieber", vioGetElementData ( player, "gunloads" ), "Name LIKE '"..getPlayerName(player).."'")				-- Achiev: Waffenschieber
+							dbExec( handler, "UPDATE achievments SET Waffenschieber=? WHERE Name LIKE ?", vioGetElementData ( player, "gunloads" ), getPlayerName(player) )				-- Achiev: Waffenschieber
 						end																																					-- Achiev: Waffenschieber
 					end																																						-- Achiev: Waffenschieber
 					triggerClientEvent ( player, "HudEinblendenMoney", getRootElement() )
@@ -130,11 +124,11 @@ function AztecasGunshopEnter_func ( hitElement )
 end
 addEventHandler ( "onMarkerHit", AztecasGunshopEnter, AztecasGunshopEnter_func )
 
-function gunbuyAztecas_func ( player, itemtype, item,  w0, w1, w2, w3, w4, w5, w6, w7 )
 
-	local success = 0
-	if player == client then
-		AztecasFamkasse = tonumber(MySQL_GetString("fraktionen", "DepotGeld", "Name LIKE 'Aztecas'"))
+local function gunbuyAztecas_func_DB ( qh, player, itemtype, item, w0, w1, w2, w3, w4, w5, w6, w7 ) 
+	local result = dbPoll( qh, 0 )
+	if result and result[1] then
+		AztecasFamkasse = result[1]["DepotGeld"]
 		if itemtype == "armor" then
 			if vioGetElementData ( player, "money" ) >= armor_price then
 				vioSetElementData ( player, "money", vioGetElementData ( player, "money" ) - armor_price )
@@ -159,7 +153,7 @@ function gunbuyAztecas_func ( player, itemtype, item,  w0, w1, w2, w3, w4, w5, w
 							giveWeapon ( player, w2, 17, true )
 							triggerClientEvent ( player, "sec_gun_give", getRootElement(), w2, 17 )
 							success = 1
-							MySQL_SetString("fraktionswaffen", "PistolenMagazine", AztecasPistolenMagazine-1, "Fraktion LIKE 'Aztecas'")
+							dbExec( handler, "UPDATE fraktionswaffen SET PistolenMagazine = PistolenMagazine - 1 WHERE Fraktion LIKE 'Aztecas'")
 							AztecasPistolenMagazine = AztecasPistolenMagazine-1
 							AztecasFamkasse = AztecasFamkasse + pistolammo_price
 						else
@@ -183,7 +177,7 @@ function gunbuyAztecas_func ( player, itemtype, item,  w0, w1, w2, w3, w4, w5, w
 							giveWeapon ( player, w2, 7, true )
 							triggerClientEvent ( player, "sec_gun_give", getRootElement(), w2, 7 )
 							success = 1
-							MySQL_SetString("fraktionswaffen", "DesertEagleMunition", AztecasDesertEagleMunition-1, "Fraktion LIKE 'Aztecas'")
+							dbExec( handler, "UPDATE fraktionswaffen SET DesertEagleMunition = DesertEagleMunition - 1 WHERE Fraktion LIKE 'Aztecas'")
 							AztecasDesertEagleMunition = AztecasDesertEagleMunition-1
 							AztecasFamkasse = AztecasFamkasse + eagleammo_price
 						else
@@ -207,7 +201,7 @@ function gunbuyAztecas_func ( player, itemtype, item,  w0, w1, w2, w3, w4, w5, w
 							giveWeapon ( player, w4, 30, true )
 							triggerClientEvent ( player, "sec_gun_give", getRootElement(), w4, 30 )
 							success = 1
-							MySQL_SetString("fraktionswaffen", "MPMunition", AztecasMPMunition-1, "Fraktion LIKE 'Aztecas'")
+							dbExec( handler, "UPDATE fraktionswaffen SET MPMunition = MPMunition - 1 WHERE Fraktion LIKE 'Aztecas'")
 							AztecasMPMunition = AztecasMPMunition-1
 							AztecasFamkasse = AztecasFamkasse + mpammo_price
 						else
@@ -231,7 +225,7 @@ function gunbuyAztecas_func ( player, itemtype, item,  w0, w1, w2, w3, w4, w5, w
 							giveWeapon ( player, w3, 1, true )
 							triggerClientEvent ( player, "sec_gun_give", getRootElement(), w3, 1 )
 							success = 1
-							MySQL_SetString("fraktionswaffen", "SchrotflintenMunition", AztecasSchrotflintenMunition-1, "Fraktion LIKE 'Aztecas'")
+							dbExec( handler, "UPDATE fraktionswaffen SET SchrotflintenMunition = SchrotflintenMunition - 1 WHERE Fraktion LIKE 'Aztecas'")
 							AztecasSchrotflintenMunition = AztecasSchrotflintenMunition-1
 							AztecasFamkasse = AztecasFamkasse + shotgunammo_price
 						else
@@ -255,7 +249,7 @@ function gunbuyAztecas_func ( player, itemtype, item,  w0, w1, w2, w3, w4, w5, w
 							giveWeapon ( player, w5, 30, true )
 							triggerClientEvent ( player, "sec_gun_give", getRootElement(), w5, 30 )
 							success = 1
-							MySQL_SetString("fraktionswaffen", "AKMunition", AztecasAKMunition-1, "Fraktion LIKE 'Aztecas'")
+							dbExec( handler, "UPDATE fraktionswaffen SET AKMunition = AKMunition - 1 WHERE Fraktion LIKE 'Aztecas'" )
 							AztecasAKMunition = AztecasAKMunition-1
 							AztecasFamkasse = AztecasFamkasse + akammo_price
 						else
@@ -279,7 +273,7 @@ function gunbuyAztecas_func ( player, itemtype, item,  w0, w1, w2, w3, w4, w5, w
 							giveWeapon ( player, w5, 50, true )
 							triggerClientEvent ( player, "sec_gun_give", getRootElement(), w5, 50 )
 							success = 1
-							MySQL_SetString("fraktionswaffen", "MMunition", AztecasMMunition-1, "Fraktion LIKE 'Aztecas'")
+							dbExec( handler, "UPDATE fraktionswaffen SET MMunition = MMunition - 1 WHERE Fraktion LIKE 'Aztecas'" )
 							AztecasMMunition = AztecasMMunition-1
 							AztecasFamkasse = AztecasFamkasse + mammo_price
 						else
@@ -303,7 +297,7 @@ function gunbuyAztecas_func ( player, itemtype, item,  w0, w1, w2, w3, w4, w5, w
 							giveWeapon ( player, w6, 1, true )
 							triggerClientEvent ( player, "sec_gun_give", getRootElement(), w6, 1 )
 							success = 1
-							MySQL_SetString("fraktionswaffen", "GewehrPatronen", AztecasGewehrPatronen-1, "Fraktion LIKE 'Aztecas'")
+							dbExec( handler, "UPDATE fraktionswaffen SET GewehrPatronen = GewehrPatronen - 1 WHERE Fraktion LIKE 'Aztecas'" )
 							AztecasGewehrPatronen = AztecasGewehrPatronen-1
 							AztecasFamkasse = AztecasFamkasse + gewehrammo_price
 						else
@@ -327,7 +321,7 @@ function gunbuyAztecas_func ( player, itemtype, item,  w0, w1, w2, w3, w4, w5, w
 							giveWeapon ( player, w6, 1, true )
 							triggerClientEvent ( player, "sec_gun_give", getRootElement(), w6, 1 )
 							success = 1
-							MySQL_SetString("fraktionswaffen", "SGewehrMunition", AztecasSGewehrMunition-1, "Fraktion LIKE 'Aztecas'")
+							dbExec( handler, "UPDATE fraktionswaffen SET SGewehrMunition = SGewehrMunition - 1 WHERE Fraktion LIKE 'Aztecas'" )
 							AztecasSGewehrMunition = AztecasSGewehrMunition-1
 							AztecasFamkasse = AztecasFamkasse + sgewehrammo_price
 						else
@@ -351,7 +345,7 @@ function gunbuyAztecas_func ( player, itemtype, item,  w0, w1, w2, w3, w4, w5, w
 							giveWeapon ( player, w7, 1, true )
 							triggerClientEvent ( player, "sec_gun_give", getRootElement(), w7, 1 )
 							success = 1
-							MySQL_SetString("fraktionswaffen", "Raketen", AztecasRaketen-1, "Fraktion LIKE 'Aztecas'")
+							dbExec( handler, "UPDATE fraktionswaffen SET Raketen = Raketen - 1 WHERE Fraktion LIKE 'Aztecas'" )
 							AztecasRaketen = AztecasRaketen-1
 							AztecasFamkasse = AztecasFamkasse + rak_price
 						else
@@ -376,7 +370,7 @@ function gunbuyAztecas_func ( player, itemtype, item,  w0, w1, w2, w3, w4, w5, w
 							giveWeapon ( player, 5, 1, true )
 							triggerClientEvent ( player, "sec_gun_give", getRootElement(), 5, 1 )
 							success = 1
-							MySQL_SetString("fraktionswaffen", "Baseballschlaeger", AztecasBaseballschlaeger-1, "Fraktion LIKE 'Aztecas'")
+							dbExec( handler, "UPDATE fraktionswaffen SET Baseballschlaeger = Baseballschlaeger - 1 WHERE Fraktion LIKE 'Aztecas'" )
 							AztecasBaseballschlaeger = AztecasBaseballschlaeger-1
 							AztecasFamkasse = AztecasFamkasse + baseball_price
 						else
@@ -400,7 +394,7 @@ function gunbuyAztecas_func ( player, itemtype, item,  w0, w1, w2, w3, w4, w5, w
 							giveWeapon ( player, 6, 1, true )
 							triggerClientEvent ( player, "sec_gun_give", getRootElement(), 6, 1 )
 							success = 1
-							MySQL_SetString("fraktionswaffen", "Schaufeln", AztecasSchaufeln-1, "Fraktion LIKE 'Aztecas'")
+							dbExec( handler, "UPDATE fraktionswaffen SET Schaufeln = Schaufeln - 1 WHERE Fraktion LIKE 'Aztecas'" )
 							AztecasSchaufeln = AztecasSchaufeln-1
 							AztecasFamkasse = AztecasFamkasse + shovels_price
 						else
@@ -424,7 +418,7 @@ function gunbuyAztecas_func ( player, itemtype, item,  w0, w1, w2, w3, w4, w5, w
 							giveWeapon ( player, 4, 1, true )
 							triggerClientEvent ( player, "sec_gun_give", getRootElement(), 4, 1 )
 							success = 1
-							MySQL_SetString("fraktionswaffen", "Messer", AztecasMesser-1, "Fraktion LIKE 'Aztecas'")
+							dbExec( handler, "UPDATE fraktionswaffen SET Messer = Messer - 1 WHERE Fraktion LIKE 'Aztecas'" )
 							AztecasMesser = AztecasMesser-1
 							AztecasFamkasse = AztecasFamkasse + knife_price
 						else
@@ -448,7 +442,7 @@ function gunbuyAztecas_func ( player, itemtype, item,  w0, w1, w2, w3, w4, w5, w
 							giveWeapon ( player, 1, 1, true )
 							triggerClientEvent ( player, "sec_gun_give", getRootElement(), 1, 1 )
 							success = 1
-							MySQL_SetString("fraktionswaffen", "Schlagringe", AztecasSchlagringe-1, "Fraktion LIKE 'Aztecas'")
+							dbExec( handler, "UPDATE fraktionswaffen SET Schlagringe = Schlagringe - 1 WHERE Fraktion LIKE 'Aztecas'" )
 							AztecasSchlagringe = AztecasSchlagringe-1
 							AztecasFamkasse = AztecasFamkasse + schlagringe_price
 						else
@@ -472,7 +466,7 @@ function gunbuyAztecas_func ( player, itemtype, item,  w0, w1, w2, w3, w4, w5, w
 							giveWeapon ( player, 22, 17, true )
 							triggerClientEvent ( player, "sec_gun_give", getRootElement(), 22, 17 )
 							success = 1
-							MySQL_SetString("fraktionswaffen", "Pistolen", AztecasPistolen-1, "Fraktion LIKE 'Aztecas'")
+							dbExec( handler, "UPDATE fraktionswaffen SET Pistolen = Pistolen - 1 WHERE Fraktion LIKE 'Aztecas'" )
 							AztecasPistolen = AztecasPistolen-1
 							AztecasFamkasse = AztecasFamkasse + pistol_price
 						else
@@ -496,7 +490,7 @@ function gunbuyAztecas_func ( player, itemtype, item,  w0, w1, w2, w3, w4, w5, w
 							giveWeapon ( player, 23, 17, true )
 							triggerClientEvent ( player, "sec_gun_give", getRootElement(), 23, 17 )
 							success = 1
-							MySQL_SetString("fraktionswaffen", "SDPistolen", AztecasSDPistolen-1, "Fraktion LIKE 'Aztecas'")
+							dbExec( handler, "UPDATE fraktionswaffen SET SDPistolen = SDPistolen - 1 WHERE Fraktion LIKE 'Aztecas'" )
 							AztecasSDPistolen = AztecasSDPistolen-1
 							AztecasFamkasse = AztecasFamkasse + sdpistol_price
 						else
@@ -520,7 +514,7 @@ function gunbuyAztecas_func ( player, itemtype, item,  w0, w1, w2, w3, w4, w5, w
 							giveWeapon ( player, 24, 7, true )
 							triggerClientEvent ( player, "sec_gun_give", getRootElement(), 24, 7 )
 							success = 1
-							MySQL_SetString("fraktionswaffen", "DesertEagles", AztecasDesertEagles-1, "Fraktion LIKE 'Aztecas'")
+							dbExec( handler, "UPDATE fraktionswaffen SET DesertEagles = DesertEagles - 1 WHERE Fraktion LIKE 'Aztecas'" )
 							AztecasDesertEagles = AztecasDesertEagles-1
 							AztecasFamkasse = AztecasFamkasse + eagle_price
 						else
@@ -544,7 +538,7 @@ function gunbuyAztecas_func ( player, itemtype, item,  w0, w1, w2, w3, w4, w5, w
 							giveWeapon ( player, 29, 30, true )
 							triggerClientEvent ( player, "sec_gun_give", getRootElement(), 29, 30 )
 							success = 1
-							MySQL_SetString("fraktionswaffen", "MP", AztecasMP-1, "Fraktion LIKE 'Aztecas'")
+							dbExec( handler, "UPDATE fraktionswaffen SET MP = MP - 1 WHERE Fraktion LIKE 'Aztecas'" )
 							AztecasMP = AztecasMP-1
 							AztecasFamkasse = AztecasFamkasse + mp_price
 						else
@@ -568,7 +562,7 @@ function gunbuyAztecas_func ( player, itemtype, item,  w0, w1, w2, w3, w4, w5, w
 							giveWeapon ( player, 25, 5, true )
 							triggerClientEvent ( player, "sec_gun_give", getRootElement(), 25, 5 )
 							success = 1
-							MySQL_SetString("fraktionswaffen", "Schrotflinten", AztecasSchrotflinten-1, "Fraktion LIKE 'Aztecas'")
+							dbExec( handler, "UPDATE fraktionswaffen SET Schrotflinten = Schrotflinten - 1 WHERE Fraktion LIKE 'Aztecas'" )
 							AztecasSchrotflinten = AztecasSchrotflinten-1
 							AztecasFamkasse = AztecasFamkasse + shotgun_price
 						else
@@ -593,7 +587,7 @@ function gunbuyAztecas_func ( player, itemtype, item,  w0, w1, w2, w3, w4, w5, w
 								giveWeapon ( player, 30, 30, true )
 								triggerClientEvent ( player, "sec_gun_give", getRootElement(), 30, 30 )
 								success = 1
-								MySQL_SetString("fraktionswaffen", "AK", AztecasAK-1, "Fraktion LIKE 'Aztecas'")
+								dbExec( handler, "UPDATE fraktionswaffen SET AK = AK - 1 WHERE Fraktion LIKE 'Aztecas'" )
 								AztecasAK = AztecasAK-1
 								AztecasFamkasse = AztecasFamkasse + ak_price
 							else
@@ -621,7 +615,7 @@ function gunbuyAztecas_func ( player, itemtype, item,  w0, w1, w2, w3, w4, w5, w
 								giveWeapon ( player, 31, 50, true )
 								triggerClientEvent ( player, "sec_gun_give", getRootElement(), 31, 50 )
 								success = 1
-								MySQL_SetString("fraktionswaffen", "M", AztecasM-1, "Fraktion LIKE 'Aztecas'")
+								dbExec( handler, "UPDATE fraktionswaffen SET M = M - 1 WHERE Fraktion LIKE 'Aztecas'" )
 								AztecasM = AztecasM-1
 								AztecasFamkasse = AztecasFamkasse + m_price
 							else
@@ -648,7 +642,7 @@ function gunbuyAztecas_func ( player, itemtype, item,  w0, w1, w2, w3, w4, w5, w
 							giveWeapon ( player, 33, 7, true )
 							triggerClientEvent ( player, "sec_gun_give", getRootElement(), 33, 7 )
 							success = 1
-							MySQL_SetString("fraktionswaffen", "Gewehre", AztecasGewehre-1, "Fraktion LIKE 'Aztecas'")
+							dbExec( handler, "UPDATE fraktionswaffen SET Gewehre = Gewehre - 1 WHERE Fraktion LIKE 'Aztecas'" )
 							AztecasGewehre = AztecasGewehre-1
 							AztecasFamkasse = AztecasFamkasse + gewehr_price
 						else
@@ -673,7 +667,7 @@ function gunbuyAztecas_func ( player, itemtype, item,  w0, w1, w2, w3, w4, w5, w
 								giveWeapon ( player, 34, 7, true )
 								triggerClientEvent ( player, "sec_gun_give", getRootElement(), 34, 7 )
 								success = 1
-								MySQL_SetString("fraktionswaffen", "SGewehr", AztecasSGewehr-1, "Fraktion LIKE 'Aztecas'")
+								dbExec( handler, "UPDATE fraktionswaffen SET SGewehr = SGewehr - 1 WHERE Fraktion LIKE 'Aztecas'" )
 								AztecasSGewehr = AztecasSGewehr-1
 								AztecasFamkasse = AztecasFamkasse + sgewehr_price
 							else
@@ -701,7 +695,7 @@ function gunbuyAztecas_func ( player, itemtype, item,  w0, w1, w2, w3, w4, w5, w
 								giveWeapon ( player, 35, 1, true )
 								triggerClientEvent ( player, "sec_gun_give", getRootElement(), 35, 1 )
 								success = 1
-								MySQL_SetString("fraktionswaffen", "Raketenwerfer", AztecasRaketenwerfer-1, "Fraktion LIKE 'Aztecas'")
+								dbExec( handler, "UPDATE fraktionswaffen SET Raketenwerfer = Raketenwerfer - 1 WHERE Fraktion LIKE 'Aztecas'" )
 								AztecasRaketenwerfer = AztecasRaketenwerfer-1
 								AztecasFamkasse = AztecasFamkasse + rakwerfer_price
 							else
@@ -728,7 +722,7 @@ function gunbuyAztecas_func ( player, itemtype, item,  w0, w1, w2, w3, w4, w5, w
 							giveWeapon ( player, 18, 1, true )
 							triggerClientEvent ( player, "sec_gun_give", getRootElement(), 18, 1 )
 							success = 1
-							MySQL_SetString("fraktionswaffen", "Spezwaffen", AztecasSpezwaffen-1, "Fraktion LIKE 'Aztecas'")
+							dbExec( handler, "UPDATE fraktionswaffen SET Spezwaffen = Spezwaffen - 1 WHERE Fraktion LIKE 'Aztecas'" )
 							AztecasSpezwaffen = AztecasSpezwaffen-1
 							AztecasFamkasse = AztecasFamkasse + spezgun_price
 						else
@@ -745,7 +739,15 @@ function gunbuyAztecas_func ( player, itemtype, item,  w0, w1, w2, w3, w4, w5, w
 		if success == 1 then 
 			playSoundFrontEnd ( player, 40 )
 		end
-		MySQL_SetString("fraktionen", "DepotGeld", AztecasFamkasse, "Name LIKE 'Aztecas'")
+		dbExec( handler, "UPDATE fraktionen SET DepotGeld=? WHERE Name LIKE 'Aztecas'", AztecasFamkasse)
+	end
+end
+
+function gunbuyAztecas_func ( player, itemtype, item,  w0, w1, w2, w3, w4, w5, w6, w7 )
+
+	local success = 0
+	if player == client then
+		dbQuery( gunbuyAztecas_func_DB, { player, itemtype, w0, w1, w2, w3, w4, w5, w6, w7 }, handler, "SELECT DepotGeld FROM fraktionen WHERE Name LIKE 'Aztecas'" )
 	end
 end
 addEvent ( "gunbuyAztecas", true )

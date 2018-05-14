@@ -53,7 +53,7 @@ function greenGooFadeIn ( player )
 			playSoundFrontEnd ( player, 40 )
 			triggerClientEvent ( player, "showAchievmentBox", player, " The Truth is\n out there!", 15, 10000 )
 			
-			MySQL_SetString("achievments", "TheTruthIsOutThere", vioGetElementData ( player, "thetruthisoutthere_achiev" ), "Name LIKE '"..getPlayerName(player).."'")
+			MySQL_SetString("achievments", "TheTruthIsOutThere", vioGetElementData ( player, "thetruthisoutthere_achiev" ), dbPrepareString( handler, "Name LIKE ?", getPlayerName(player) ) )
 			
 			vioSetElementData ( player, "bonuspoints", tonumber(vioGetElementData ( player, "bonuspoints" )) + 15 )
 			outputChatBox ( "Da du diese Mission geschafft hast, erhaelst du 1.500$!", player, 0, 125, 0 )
@@ -64,7 +64,7 @@ function greenGooFadeIn ( player )
 			vioSetElementData ( player, "silentassasin_achiev", "done" )
 			triggerClientEvent ( player, "showAchievmentBox", player, " Silent\n Assasin", 25, 10000 )
 			
-			MySQL_SetString("achievments", "SilentAssasin", vioGetElementData ( player, "silentassasin_achiev" ), "Name LIKE '"..getPlayerName(player).."'")
+			MySQL_SetString("achievments", "SilentAssasin", vioGetElementData ( player, "silentassasin_achiev" ), dbPrepareString( handler, "Name LIKE ?", getPlayerName(player) ) )
 			
 			vioSetElementData ( player, "bonuspoints", tonumber(vioGetElementData ( player, "bonuspoints" )) + 25 )
 			outputChatBox ( "Da du diese Mission perfekt geschafft hast, erhaelst du 1.500$!", player, 0, 125, 0 )

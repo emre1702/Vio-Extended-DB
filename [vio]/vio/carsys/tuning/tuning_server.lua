@@ -20,12 +20,7 @@ transfender1, 2393.8520507813, 989.70678710938, 10.690312385559
 tuning, 2386.8405761719, 1048.7375488281, 8.9104995727539
 ]]
 
-function applyLightValues_func ( red, green, blue )
-
-	local red = MySQL_Save ( red )
-	local green = MySQL_Save ( green )
-	local blue = MySQL_Save ( blue )
-	
+function applyLightValues_func ( red, green, blue )	
 	local player = client
 	local veh = getPedOccupiedVehicle ( player )
 	
@@ -38,7 +33,7 @@ function applyLightValues_func ( red, green, blue )
 		lcolor = "|"..red.."|"..green.."|"..blue.."|"
 		vioSetElementData ( veh, "lcolor", lcolor )
 		
-		MySQL_SetString("vehicles", "Lights", lcolor, "Besitzer LIKE '" ..pname.."' AND Slot LIKE '"..slot.."'")
+		dbExec( handler, "UPDATE vehicles SET Lights = ? WHERE Besitzer LIKE ? AND Slot LIKE ?", lcolor, pname, slot )
 	end
 end
 addEvent ( "applyLightValues", true )
@@ -103,7 +98,7 @@ function addSpecialTuning_func ( tuning )
 		local price = specialUpgradePrice[tuning]
 		local money = vioGetElementData ( player, "money" )
 		if money >= price then
-			local pname = MySQL_Save ( getPlayerName ( player ) )
+			local pname = getPlayerName ( player )
 			local veh = getPedOccupiedVehicle ( player )
 			local totTuning = ""
 			for i = 1, 6 do
@@ -125,9 +120,8 @@ function addSpecialTuning_func ( tuning )
 					totTuning = totTuning..tok.."|"
 				end
 			end
-			totTuning = MySQL_Save ( totTuning )
 			vioSetElementData ( veh, "stuning", totTuning )
-			MySQL_SetString("vehicles", "STuning", totTuning, "Besitzer LIKE '" ..pname.."' AND Slot LIKE '" ..vioGetElementData ( veh, "carslotnr_owner" ).. "' ")
+			dbExec( handler, "UPDATE vehicles SET STuning = ? WHERE Besitzer LIKE ? AND Slot LIKE ?", totTuning, pname, vioGetElementData ( veh, "carslotnr_owner" ) )
 			specPimpVeh ( veh )
 			specialTuningVehEnter ( player, 0 )
 			vioSetElementData ( player, "money", money - price )
@@ -140,9 +134,8 @@ addEventHandler ( "addSpecialTuning", getRootElement(), addSpecialTuning_func )
 function CancelTuning_func ( player, veh, c1, c2, c3, c4, paintjob, t0, t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16 )
 
 	if player == client then
-		paintjob = MySQL_Save ( paintjob )
 		setVehiclePaintjob ( veh, paintjob )
-		local color = MySQL_Save ( "|"..c1.."|"..c2.."|"..c3.."|"..c4.."|" )
+		local color = "|"..c1.."|"..c2.."|"..c3.."|"..c4.."|"
 		vioSetElementData ( veh, "color", color )
 		setPrivVehCorrectColor ( veh )
 		setElementDimension ( player, 0 )
@@ -201,14 +194,11 @@ function CancelTuning_func ( player, veh, c1, c2, c3, c4, paintjob, t0, t1, t2, 
 		tuning = tuning..t15.."|"
 		if t16 == false then t16 = 0 else addVehicleUpgrade ( veh, t16 ) end
 		tuning = tuning..t16.."|"
-		tuning = MySQL_Save ( tuning )
-		local pname = MySQL_Save ( getPlayerName ( player ) )
+		local pname = getPlayerName ( player )
 		local slot = vioGetElementData ( veh, "carslotnr_owner" )
 		activeCarGhostMode ( player, 10000 )
 		if slot then
-			MySQL_SetString("vehicles", "Tuning", tuning, "Besitzer LIKE '" ..pname.."' AND Slot LIKE '" ..slot.. "' ")
-			MySQL_SetString("vehicles", "Farbe", color, "Besitzer LIKE '" ..pname.."' AND Slot LIKE '" ..slot.. "' ")
-			MySQL_SetString("vehicles", "Paintjob", paintjob, "Besitzer LIKE '" ..pname.."' AND Slot LIKE '" ..slot.. "' ")
+			dbExec( handler, "UPDATE vehicles SET Tuning = ?, Farbe = ?, Paintjob = ? WHERE Besitzer LIKE ? AND Slot LIKE ?", tuning, color, paintjob, pname, slot )
 		end
 	end
 end

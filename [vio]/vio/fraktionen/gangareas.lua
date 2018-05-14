@@ -52,17 +52,18 @@ sec = 1000
 
 function createGangAreas ( )
 
-	local result = mysql_query( handler, "SELECT * FROM gangs" )
+	local result, errorcode, errormsg = dbPoll( dbQuery( handler, "SELECT * FROM gangs" ), -1 )
 	
 	if ( not result) then
-		outputDebugString("Error executing the query: (" .. mysql_errno(handler) .. ") " .. mysql_error(handler))
+		outputDebugString("Error executing the query: (" .. errorcode .. ") " .. errormsg)
+		return
+	end
+	if ( not result[1] ) then
 		return
 	end
 	
-	local dsatz = mysql_fetch_assoc( result )
-		
-	while ( dsatz ) do
-	
+	for i=1, #result do
+		local dsatz = result[i]
 		local ID = dsatz["Nummer"]
 		local XS = math.abs( dsatz["X1"] - dsatz["X2"] )
 		local YS = math.abs( dsatz["Y1"] - dsatz["Y2"] )
@@ -106,14 +107,8 @@ function createGangAreas ( )
 					outputChatBox ( "Tippe /attack, um einen Angriff zu starten!", hit, 125, 0, 0 )
 				end	
 			
-			end )
-			
-		dsatz = mysql_fetch_assoc ( result )
-			
+			end )			
 	end
-	
-	mysql_free_result ( result )
-
 end
 
 addEventHandler ( "onResourceStart", resourceRoot, createGangAreas )
@@ -175,24 +170,24 @@ function gangAreaBoni ()
 					local gang = 0
 					factionDepotData["drugs"][owner] = factionDepotData["drugs"][owner] + 5
 					local drugs = factionDepotData["drugs"][owner]
-					MySQL_SetString("fraktionen", "DepotDrogen", drugs, "id = '"..owner.."'")
+					dbExec( handler, "UPDATE fraktionen SET DepotDrogen = ? WHERE id = ?", drugs, owner )
 				elseif id == 6 then
 					factionDepotData["mats"][owner] = factionDepotData["mats"][owner] + 2
 					local mats = factionDepotData["mats"][owner]
-					MySQL_SetString("fraktionen", "DepotMaterials", mats, "id = '"..owner.."'")
+					dbExec( handler, "UPDATE fraktionen SET DepotMaterials = ? WHERE id = ?", mats, owner )
 				elseif id == 7 then
 					local gang = 0
 					if gang then
 						factionDepotData["mats"][owner] = factionDepotData["mats"][owner] + 2
 						local mats = factionDepotData["mats"][owner]
-						MySQL_SetString("fraktionen", "DepotMaterials", mats, "id = '"..owner.."'")
+						dbExec( handler, "UPDATE fraktionen SET DepotMaterials = ? WHERE id = ?", mats, owner )
 					end
 				elseif id == 8 then
 					local gang = 0
 					if gang then
 						factionDepotData["mats"][owner] = factionDepotData["mats"][owner] + 2
 						local mats = factionDepotData["mats"][owner]
-						MySQL_SetString("fraktionen", "DepotMaterials", mats, "id = '"..owner.."'")
+						dbExec( handler, "UPDATE fraktionen SET DepotMaterials = ? WHERE id = ?", mats, owner )
 					end
 				end
 			end
@@ -211,7 +206,7 @@ function gangAreaEinnahmen ()
 			if gang then
 				factionDepotData["money"][owner] = factionDepotData["money"][owner] + vioGetElementData ( pickup, "einnahmen" )
 				local money = factionDepotData["money"][owner]
-				MySQL_SetString ( "fraktionen", "DepotGeld", money, "id = '"..owner.."'" )
+				dbExec( handler, "UPDATE fraktionen SET DepotGeld = ? WHERE id = ?", money, owner )
 			end
 		end
 	end
@@ -231,6 +226,18 @@ end
 		outputChatBox ( "Tippe /attack, um einen Angriff zu starten!", hit, 125, 0, 0 )
 	end
 end]]
+
+
+local function attack_func_DB ( qh, player, pickup, owner, validID )
+	local result = dbPoll( qh, 0 )
+	if result and result[1] then
+		local lastAttacked = result[1]["LastAttacked"]
+		local time = getRealTime()
+		if time.timestamp > lastAttacked then
+			startGangAreaAttack ( player, pickup, owner, validID )
+		end
+	end
+end
 
 function attack_func ( player )
 	
@@ -252,11 +259,7 @@ function attack_func ( player )
 			if owner ~= vioGetElementData ( player, "fraktion" ) then
 				if getFactionMembersOnline ( owner ) >= 3 then
 					if not gangAreaUnderAttack then
-						local lastAttacked = tonumber ( MySQL_GetString("gangs", "LastAttacked", "Nummer LIKE '" ..tonumber(validID).."'") )
-						local time = getRealTime()
-						if time.timestamp > lastAttacked then
-							startGangAreaAttack ( player, pickup, owner, validID )
-						end
+						dbQuery( attack_func_DB, { player, pickup, owner, validID }, handler, "SELECT LastAttacked FROM gangs WHERE Nummer LIKE ?", tonumber( validID ) )
 					else
 						outputChatBox ( "Es kann immer nur ein Angriff zur selben Zeit stattfinden!", player, 125, 0, 0 )
 					end
@@ -278,7 +281,7 @@ addCommandHandler ( "attack", attack_func )
 function startGangAreaAttack ( player, pickup, owner, id )
 	local time = getRealTime()
 	local area = _G["gangArea"..id]
-	MySQL_SetString("gangs", "LastAttacked", time.timestamp+86400, "Nummer LIKE '" ..id.."'")
+	dbExec( handler, "UPDATE gangs SET LastAttacked = ? WHERE Nummer = ?", time.timestamp+86400, owner )
 	gangAreaUnderAttack = true
 	setRadarAreaFlashing ( area, true )
 	setRadarAreaColor ( area, 125, 0, 0, 200 )
@@ -340,7 +343,7 @@ function areaFinishCheck ( area, attackers, owner, pickup, id )
 	gangAreaAttackers = false
 	gangAreaDefenders = false
 	vioSetElementData ( pickup, "gang", attackers )
-	MySQL_SetString("gangs", "BesitzerFraktion", attackers, "Nummer LIKE '"..id.."'")
+	dbExec( handler, "UPDATE gangs SET BesitzerFraktion = ? WHERE Nummer LIKE ?", attackers, id )
 	
 	local r = gangColor[attackers][1]
 	local g = gangColor[attackers][2]

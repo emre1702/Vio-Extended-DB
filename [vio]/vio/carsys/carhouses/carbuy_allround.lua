@@ -1,13 +1,5 @@
 ﻿function carbuy ( player, carprice, vehid, spawnx, spawny, spawnz, rx, ry, rz, c1, c2, c3, c4, p, ec, Tuning )
 
-	carprice = MySQL_Save ( carprice )
-	vehid = MySQL_Save ( vehid )
-	spawnx = MySQL_Save ( spawnx )
-	spawny = MySQL_Save ( spawny )
-	spawnz = MySQL_Save ( spawnz )
-	rx = MySQL_Save ( rx )
-	ry = MySQL_Save ( ry )
-	rz = MySQL_Save ( rz )
 	vehid = tonumber ( vehid )
 	local pname = getPlayerName ( player )
 	local differenz
@@ -17,14 +9,17 @@
 			table.insert ( carprices, vehid, aiCarPrices[vehid] )
 		end
 	end
-	hasCamper = false
+	local hasCamper = false
 	local id
-	for i = 1, 10 do
-		id = tonumber ( MySQL_GetString ( "vehicles", "Typ", "Besitzer LIKE '"..pname.."' AND Slot LIKE '"..i.."'" ) )
-		if id then
-			if camper[id] then
-				hasCamper = true
-				break
+	local result = dbPoll( dbQuery ( handler, "SELECT Typ FROM vehicles WHERE Besitzer LIKE ? AND Slot LIKE ?", pname, i ), -1 )
+	if result and result[1] then
+		for i=1, #result do
+			id = tonumber( result[i]["Typ"] )
+			if id then
+				if camper[id] then
+					hasCamper = true
+					break
+				end
 			end
 		end
 	end
@@ -144,12 +139,10 @@
 								prompt ( player, text, 30 )
 							end
 							
-							local result = mysql_query(handler, "INSERT INTO vehicles (Besitzer, Typ, Tuning, Spawnpos_X, Spawnpos_Y, Spawnpos_Z, Spawnrot_X, Spawnrot_Y, Spawnrot_Z, Farbe, Paintjob, Benzin, Slot) VALUES ('"..Besitzer.."', "..vehid..", '"..Tuning.."', '"..Spawnpos_X.."', '"..Spawnpos_Y.."', '"..Spawnpos_Z.."', '"..Spawnrot_X.."', '"..Spawnrot_Y.."', '"..Spawnrot_Z.."', '"..color.."', '"..Paintjob.."', '"..Benzin.."', '"..Slot.."')")
+							local result = dbExec(handler, "INSERT INTO vehicles (Besitzer, Typ, Tuning, Spawnpos_X, Spawnpos_Y, Spawnpos_Z, Spawnrot_X, Spawnrot_Y, Spawnrot_Z, Farbe, Paintjob, Benzin, Slot) VALUES (?, "..vehid..", '"..Tuning.."', '"..Spawnpos_X.."', '"..Spawnpos_Y.."', '"..Spawnpos_Z.."', '"..Spawnrot_X.."', '"..Spawnrot_Y.."', '"..Spawnrot_Z.."', '"..color.."', '"..Paintjob.."', '"..Benzin.."', '"..Slot.."')", Besitzer )
 							if ( not result ) then
-								outputDebugString("Error executing the query: (" .. mysql_errno(handler) .. ") " .. mysql_error(handler))
+								outputDebugString("Error executing the query in carbuy" )
 								destroyElement ( _G[getPrivVehString ( x, y )] )
-							else
-								mysql_free_result(result)
 							end
 							activeCarGhostMode ( player, 10000 )
 							

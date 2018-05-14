@@ -1,32 +1,39 @@
 ﻿function aztecasData_load ()
 
 	local mafia = "Aztecas"
-	
-	AztecasFamkasse = tonumber(MySQL_GetString("fraktionen", "FKasse", "Name LIKE '" ..mafia.."'"))
-	
-	AztecasSchlagringe = tonumber(MySQL_GetString("fraktionswaffen", "Schlagringe", "Fraktion LIKE '" ..mafia.."'"))
-	AztecasBaseballschlaeger = tonumber(MySQL_GetString("fraktionswaffen", "Baseballschlaeger", "Fraktion LIKE '" ..mafia.."'"))
-	AztecasMesser = tonumber(MySQL_GetString("fraktionswaffen", "Messer", "Fraktion LIKE '" ..mafia.."'"))
-	AztecasSchaufeln = tonumber(MySQL_GetString("fraktionswaffen", "Schaufeln", "Fraktion LIKE '" ..mafia.."'"))
-	AztecasPistolen = tonumber(MySQL_GetString("fraktionswaffen", "Pistolen", "Fraktion LIKE '" ..mafia.."'"))
-	AztecasSDPistolen = tonumber(MySQL_GetString("fraktionswaffen", "SDPistolen", "Fraktion LIKE '" ..mafia.."'"))
-	AztecasPistolenMagazine = tonumber(MySQL_GetString("fraktionswaffen", "PistolenMagazine", "Fraktion LIKE '" ..mafia.."'"))
-	AztecasDesertEagles = tonumber(MySQL_GetString("fraktionswaffen", "DesertEagles", "Fraktion LIKE '" ..mafia.."'"))
-	AztecasDesertEagleMunition = tonumber(MySQL_GetString("fraktionswaffen", "DesertEagleMunition", "Fraktion LIKE '" ..mafia.."'"))
-	AztecasSchrotflinten = tonumber(MySQL_GetString("fraktionswaffen", "Schrotflinten", "Fraktion LIKE '" ..mafia.."'"))
-	AztecasSchrotflintenMunition = tonumber(MySQL_GetString("fraktionswaffen", "SchrotflintenMunition", "Fraktion LIKE '" ..mafia.."'"))
-	AztecasMP = tonumber(MySQL_GetString("fraktionswaffen", "MP", "Fraktion LIKE '" ..mafia.."'"))
-	AztecasMPMunition = tonumber(MySQL_GetString("fraktionswaffen", "MPMunition", "Fraktion LIKE '" ..mafia.."'"))
-	AztecasAK = tonumber(MySQL_GetString("fraktionswaffen", "AK", "Fraktion LIKE '" ..mafia.."'"))
-	AztecasAKMunition = tonumber(MySQL_GetString("fraktionswaffen", "AKMunition", "Fraktion LIKE '" ..mafia.."'"))
-	AztecasM = tonumber(MySQL_GetString("fraktionswaffen", "M", "Fraktion LIKE '" ..mafia.."'"))
-	AztecasMMunition = tonumber(MySQL_GetString("fraktionswaffen", "MMunition", "Fraktion LIKE '" ..mafia.."'"))
-	AztecasGewehre = tonumber(MySQL_GetString("fraktionswaffen", "Gewehre", "Fraktion LIKE '" ..mafia.."'"))
-	AztecasGewehrPatronen = tonumber(MySQL_GetString("fraktionswaffen", "GewehrPatronen", "Fraktion LIKE '" ..mafia.."'"))
-	AztecasSGewehr = tonumber(MySQL_GetString("fraktionswaffen", "SGewehr", "Fraktion LIKE '" ..mafia.."'"))
-	AztecasSGewehrMunition = tonumber(MySQL_GetString("fraktionswaffen", "SGewehrMunition", "Fraktion LIKE '" ..mafia.."'"))
-	AztecasRaketenwerfer = tonumber(MySQL_GetString("fraktionswaffen", "Raketenwerfer", "Fraktion LIKE '" ..mafia.."'"))
-	AztecasRaketen = tonumber(MySQL_GetString("fraktionswaffen", "Raketen", "Fraktion LIKE '" ..mafia.."'"))
-	AztecasSpezwaffen = tonumber(MySQL_GetString("fraktionswaffen", "Spezwaffen", "Fraktion LIKE '" ..mafia.."'"))
+
+	local result = dbPoll( dbQuery( handler, "SELECT * FROM fraktionswaffen WHERE Fraktion LIKE ?", mafia ), -1 )
+	if result and result[1] then
+		local d = result[1]
+		AztecasSchlagringe = tonumber( d["Schlagringe"] )
+		AztecasBaseballschlaeger = tonumber( d["Baseballschlaeger"] )
+		AztecasMesser = tonumber( d["Messer"] )
+		AztecasSchaufeln = tonumber( d["Schaufeln"] )
+		AztecasPistolen = tonumber( d["Pistolen"] )
+		AztecasSDPistolen = tonumber( d["SDPistolen"] )
+		AztecasPistolenMagazine = tonumber( d["PistolenMagazine"]  )
+		AztecasDesertEagles = tonumber( d["DesertEagles"]  )
+		AztecasDesertEagleMunition = tonumber( d["DesertEagleMunition"]  )
+		AztecasSchrotflinten = tonumber( d["Schrotflinten"]  )
+		AztecasSchrotflintenMunition = tonumber( d["SchrotflintenMunition"]  )
+		AztecasMP = tonumber( d["MP"]  )
+		AztecasMPMunition = tonumber( d["MPMunition"]  )
+		AztecasAK = tonumber( d["AK"] ) 
+		AztecasAKMunition = tonumber( d["AKMunition"] )
+		AztecasM = tonumber( d["M"] ) 
+		AztecasMMunition = tonumber( d["MMunition"] ) 
+		AztecasGewehre = tonumber( d["Gewehre"] ) 
+		AztecasGewehrPatronen = tonumber( d["GewehrPatronen"] ) 
+		AztecasSGewehr = tonumber( d["SGewehr"]  )
+		AztecasSGewehrMunition = tonumber( d["SGewehrMunition"]  )
+		AztecasRaketenwerfer = tonumber( d["Raketenwerfer"]  )
+		AztecasRaketen = tonumber( d["Raketen"]  )
+		AztecasSpezwaffen = tonumber( d["Spezwaffen"]  )
+	end
+
+	result = dbPoll( dbQuery( handler, "SELECT DepotGeld FROM fraktionen WHERE Name LIKE ?", mafia ), -1 )
+	if result and result[1] then
+		AztecasFamkasse = tonumber( d["DepotGeld"] )
+	end
 end
 addEventHandler("onResourceStart", getResourceRootElement(getThisResource()), aztecasData_load )

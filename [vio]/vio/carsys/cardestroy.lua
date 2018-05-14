@@ -14,7 +14,7 @@
 				vioSetElementData ( owner, "carslot"..vioGetElementData(source, "carslotnr_owner" ), 0 )
 				vioSetElementData ( owner, "curcars", vioGetElementData ( owner, "curcars" )-1 )
 				if tonumber(vioGetElementData ( source, "special" )) ~= 2 then outputChatBox ( "Dein Fahrzeug in Slot NR "..vioGetElementData(source, "carslotnr_owner" ).." wurde zerstort!", owner, 125, 0, 0 ) end
-				MySQL_DelRow("vehicles", "Besitzer LIKE '"..oname.."' AND Slot LIKE '"..vioGetElementData(source, "carslotnr_owner" ).."'")
+				dbExec( handler, "REMOVE FROM vehicles WHERE Besitzer LIKE ? AND Slot LIKE ?", oname, vioGetElementData(source, "carslotnr_owner" ) )
 				outputLog ( "Fahrzeug von "..oname.." ( "..vioGetElementData(source, "carslotnr_owner" ).." ) wurde zerstoert. | Modell: "..getElementModel(source).." |", "explodecar" )
 				SaveCarData ( owner )
 			end

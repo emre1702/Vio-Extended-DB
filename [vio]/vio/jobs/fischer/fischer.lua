@@ -149,7 +149,7 @@ function endfishing_func ( fische )
 						triggerClientEvent ( source, "showAchievmentBox", source, "  Angler", 25, 10000 )																-- Achiev: Angler
 						vioSetElementData ( source, "bonuspoints", tonumber(vioGetElementData ( source, "bonuspoints" )) + 25 )												-- Achiev: Angler
 						vioSetElementData ( source, "angler_achiev", "done" )																								-- Achiev: Angler
-						MySQL_SetString("achievments", "Angler", vioGetElementData ( source, "angler_achiev" ), "Name LIKE '"..getPlayerName(source).."'")					-- Achiev: Angler
+						MySQL_SetString("achievments", "Angler", vioGetElementData ( source, "angler_achiev" ), dbPrepareString( handler, "Name LIKE ?", getPlayerName(source) ) )					-- Achiev: Angler
 					end																																					-- Achiev: Angler
 				end																																						-- Achiev: Angler
 			end

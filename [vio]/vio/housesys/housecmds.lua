@@ -1,33 +1,29 @@
-﻿function createHouse ( player, cmd, preis, playtime, int )
+﻿local function createHouse_DB ( qh, player, Preis, Mindestzeit, CurrentInterior )
+	local result = dbPoll( qh, 0 )
+	if result and result[1] then
+		local ID = tonumber( result[1]["theID"] )
+		local SymbolX, SymbolY, SymbolZ = getElementPosition ( player )
+		local Besitzer = "none"
+		local result = dbExec(handler, "INSERT INTO houses (ID, SymbolX, SymbolY, SymbolZ, Besitzer, Preis, Mindestzeit, CurrentInterior, Kasse, Miete) VALUES (?, '"..SymbolX.."', '"..SymbolY.."', '"..SymbolZ.."', ?, '"..Preis.."', '"..Mindestzeit.."', '"..CurrentInterior.."', '0', '0')", ID, Besitzer )
+		if( not result) then
+			outputDebugString("Error executing the query at createHouse_DB")
+		else
+			outputDebugString ("Haus ID "..i.." wurden angelegt!")
+			outputChatBox ( "Haus angelegt!", player, 200, 200, 0 )
+			createHouse ( ID, SymbolX, SymbolY, SymbolZ, Besitzer, Preis, Mindestzeit, CurrentInterior, 0, 0 )
+		end
+	end
+end
 
-	if playtime ~= nil then local playtime = playtime*60 end
+
+function createHouse ( player, cmd, preis, playtime, int )
+	if playtime ~= nil then local playtime = playtime*60 end   -- von Bonus: Hier ist ein Bug! --
 	local Preis = tonumber ( math.abs ( preis ) )
 	local Mindestzeit = tonumber ( playtime )
 	local CurrentInterior = tonumber ( int )
 	if vioGetElementData ( player, "adminlvl" ) >= 3 then
 		if Preis > 10000 and Mindestzeit > 10 and CurrentInterior ~= nil then
-			for i = 1, 9999 do
-				local exist = MySQL_DatasetExist("houses", "ID LIKE '"..i.."'")
-				if exist == true then
-				else
-					local ID = i
-					local SymbolX, SymbolY, SymbolZ = getElementPosition ( player )
-					local Besitzer = "none"
-					local Preis = tonumber ( preis )
-					local Mindestzeit = tonumber ( playtime )
-					local CurrentInterior = tonumber ( int )
-					local result = mysql_query(handler, "INSERT INTO houses (ID, SymbolX, SymbolY, SymbolZ, Besitzer, Preis, Mindestzeit, CurrentInterior, Kasse, Miete) VALUES ('"..ID.."', '"..SymbolX.."', '"..SymbolY.."', '"..SymbolZ.."', '"..Besitzer.."', '"..Preis.."', '"..Mindestzeit.."', '"..CurrentInterior.."', '0', '0')")
-					if( not result) then
-						outputDebugString("Error executing the query: ("		.. mysql_errno(handler) .. ") " .. mysql_error(handler))
-					else
-						mysql_free_result(result)
-						outputDebugString ("Haus ID "..i.." wurden angelegt!")
-						outputChatBox ( "Haus angelegt!", player, 200, 200, 0 )
-						createHouse ( ID, SymbolX, SymbolY, SymbolZ, Besitzer, Preis, Mindestzeit, CurrentInterior, 0, 0 )
-						break
-					end
-				end
-			end
+			dbQuery( createHouse_DB, { player, Preis, Mindestzeit, CurrentInterior }, handler, "SELECT MIN(t1.ID + 1) AS theID FROM houses t1 LEFT JOIN houses t2 ON t1.ID + 1 = t2.ID WHERE t2.ID IS NULL" )
 		else
 			outputChatBox ( "Gebrauch: /newhouse [Preis] [Mind. Spielzeit in Stunden] [Interior ( iraum [1-30] )]", player )
 		end
@@ -100,6 +96,16 @@ function out_func ( player )
 end
 addCommandHandler ( "out", out_func )
 
+
+local function rent_func_DB ( qh, hause, miete )
+	local result = dbPoll( qh, 0 )
+	if result and result[1] then
+		kasse = tonumber( result[1]["Kasse"] )
+		dbExec( handler, "UPDATE houses SET Kasse = Kasse + ? WHERE ID LIKE ?", miete, vioGetElementData( haus, "id" ) )
+		vioSetElementData ( haus, "kasse", kasse + miete )
+	end
+end
+
 function rent_func ( player )
 
 	local haus = vioGetElementData ( player, "house" )
@@ -116,9 +122,7 @@ function rent_func ( player )
 					vioSetElementData ( player, "housekey", tonumber ( vioGetElementData ( haus, "id" ) ) * -1 )
 					triggerClientEvent ( player, "infobox_start", getRootElement(), "Du hast dich\nerfolgreich einge-\nmietet, tippe /unrent,\num auszuziehen!", 7500, 0, 200, 0 )
 					moneychange ( player, miete*-1 )
-					kasse = MySQL_GetString ( "houses", "Kasse", "ID LIKE '" ..getElementDimension ( player ).."'" )
-					MySQL_SetString("houses", "Kasse", kasse + miete, "ID LIKE '"..vioGetElementData ( haus, "id" ).."'")
-					vioSetElementData ( haus, "kasse", kasse + miete )
+					dbQuery( rent_func_DB, { haus, miete }, handler, "SELECT Kasse FROM houses WHERE ID LIKE ?", vioGetElementData ( haus, "id" ) )
 				else
 					triggerClientEvent ( player, "infobox_start", getRootElement(), "\n\nDu hast zu\nwenig Geld!", 7500, 125, 0, 0 )
 				end
@@ -136,37 +140,43 @@ function rent_func ( player )
 end
 addCommandHandler ( "rent", rent_func )
 
+
+local function sellhouse_func_DB ( qh, player, ID, haus, pname )
+	local result = dbPoll( qh, 0 )
+	if not result or not result[1] then
+		if not isGang ( ID ) then
+			outputLog ( pname.." hat sein Haus verkauft.", "house" )
+			vioSetElementData ( player, "spawnpos_x", -2458.288085 )
+			vioSetElementData ( player, "spawnpos_y", 774.354492 )
+			vioSetElementData ( player, "spawnpos_z", 35.171875 )
+			vioSetElementData ( player, "spawnrot_x", 52 )
+			vioSetElementData ( player, "spawnint", 0 )
+			vioSetElementData ( player, "spawndim", 0 )
+			vioSetElementData ( player, "housekey", 0 )
+			local owner = vioGetElementData ( haus, "owner" )
+			vioSetElementData ( haus, "owner", "none" )
+			setElementModel ( haus, 1273 )
+			triggerClientEvent ( player, "infobox_start", getRootElement(), "\n\nDu hast soeben\ndein Haus verkauft!", 7500, 0, 200, 0 )
+			dbExec( handler, "UPDATE houses SET Besitzer='none' WHERE Besitzer LIKE ?", getPlayerName(player) )
+			dbExec( handler, "UPDATE userdata SET Hausschluessel = '0' WHERE Name LIKE ?", getPlayerName(player) )
+			local hauswert = tonumber ( vioGetElementData ( haus, "preis" ) )
+			moneychange ( player, hauswert )
+			datasave_remote(player)
+		else
+			infobox ( player, "\n\n\nLoese erst deine\nGang auf!", 5000, 125, 0, 0 )
+		end
+	else
+		outputChatBox ( "Dein Haus wird momentan versteigert!", player, 125, 0, 0 )
+	end
+end
+
 function sellhouse_func ( player )
 
 	local ID = tonumber ( vioGetElementData ( player, "housekey" ) )
 	if ID > 0 then
 		local haus = houses["pickup"][ID]
 		local pname = getPlayerName ( player )
-		if not MySQL_DatasetExist ( "buyit", "Anbieter LIKE '"..pname.."' AND Typ LIKE 'Houses'" ) then
-			if not isGang ( ID ) then
-				outputLog ( pname.." hat sein Haus verkauft.", "house" )
-				vioSetElementData ( player, "spawnpos_x", -2458.288085 )
-				vioSetElementData ( player, "spawnpos_y", 774.354492 )
-				vioSetElementData ( player, "spawnpos_z", 35.171875 )
-				vioSetElementData ( player, "spawnrot_x", 52 )
-				vioSetElementData ( player, "spawnint", 0 )
-				vioSetElementData ( player, "spawndim", 0 )
-				vioSetElementData ( player, "housekey", 0 )
-				local owner = vioGetElementData ( haus, "owner" )
-				vioSetElementData ( haus, "owner", "none" )
-				setElementModel ( haus, 1273 )
-				triggerClientEvent ( player, "infobox_start", getRootElement(), "\n\nDu hast soeben\ndein Haus verkauft!", 7500, 0, 200, 0 )
-				MySQL_SetString("houses", "Besitzer", "none", "Besitzer LIKE '"..getPlayerName(player).."'")
-				MySQL_SetString("userdata", "Hausschluessel", 0, "Name LIKE '"..getPlayerName(player).."'")
-				local hauswert = tonumber ( vioGetElementData ( haus, "preis" ) )
-				moneychange ( player, hauswert )
-				datasave_remote(player)
-			else
-				infobox ( player, "\n\n\nLoese erst deine\nGang auf!", 5000, 125, 0, 0 )
-			end
-		else
-			outputChatBox ( "Dein Haus wird momentan versteigert!", player, 125, 0, 0 )
-		end
+		dbQuery( sellhouse_func_DB, { player, ID, haus, pname }, handler, "SELECT true FROM buyit WHERE Anbieter LIKE ? AND Typ LIKE 'Houses'", pname )
 	else
 		triggerClientEvent ( player, "infobox_start", getRootElement(), "\n\nDir gehoert\nkein Haus!", 7500, 125, 0, 0 )
 	end
@@ -215,10 +225,11 @@ function setrent_func ( player, cmd, preis )
 end
 addCommandHandler ( "setrent", setrent_func )
 
-function house_func ( player, key, state )
 
-	if isInUserHouse ( player ) then
-		local amount = MySQL_GetString ( "houses", "Kasse", "ID LIKE '" ..getElementDimension ( player ).."'" )
+local function house_func_DB ( qh, player, key, state )
+	local result = dbPoll( qh, 0 )
+	if result and result[1] then
+		local amount = tonumber( result[1]["Kasse"] )
 		if amount then
 			if not getElementData ( player, "ElementClicked" ) then
 				setElementData ( player, "ElementClicked", true )
@@ -231,6 +242,13 @@ function house_func ( player, key, state )
 				end
 			end
 		end
+	end
+end
+
+function house_func ( player, key, state )
+
+	if isInUserHouse ( player ) then
+		dbQuery( house_func_DB, { player, key, state }, handler, "SELECT Kasse FROM houses WHERE ID LIKE ?", getElementDimension( player ) )
 	end
 end
 
@@ -247,6 +265,31 @@ function hlock_func ( player )
 end
 addCommandHandler ( "hlock", hlock_func )
 
+
+local function houseClickServer_func_DB ( qh, player, cmd, amount ) 
+	local result = dbPoll( qh, 0 )
+	if result and result[1] then
+		local houseAmount = tonumber ( result[1]["Kasse"] )
+		if cmd == "take" then
+			if houseAmount >= amount then
+				givePlayerSaveMoney ( player, amount )
+				dbExec( handler, "UPDATE houses SET Kasse = Kasse - ? WHERE ID LIKE ?", amount, vioGetElementData ( player, "housekey" ) )
+				triggerClientEvent ( "showHouseGui", player, houseAmount - amount )
+			else
+				outputChatBox ( "Du hast nicht genug Geld in deiner Hauskasse!", player, 125, 0, 0 )
+			end
+		elseif cmd == "give" then
+			if vioGetElementData ( player, "money" ) >= amount then
+				takePlayerSaveMoney ( player, amount )
+				dbExec( handler, "UPDATE houses SET Kasse = Kasse + ? WHERE ID LIKE ?", amount, vioGetElementData ( player, "housekey" ) )
+				triggerClientEvent ( "showHouseGui", player, houseAmount + amount )
+			else
+				outputChatBox ( "Du hast nicht genug Geld!", player, 125, 0, 0 )
+			end
+		end
+	end
+end
+
 function houseClickServer_func ( player, cmd, amount )
 
 	playSoundFrontEnd ( player, 20 )
@@ -261,24 +304,7 @@ function houseClickServer_func ( player, cmd, amount )
 		if amount then
 			amount = math.abs(math.floor(amount))
 			if getElementDimension ( player ) == vioGetElementData ( player, "housekey" ) then
-				local houseAmount = tonumber ( MySQL_GetString ( "houses", "Kasse", "ID LIKE '" ..vioGetElementData ( player, "housekey" ).."'" ) )
-				if cmd == "take" then
-					if houseAmount >= amount then
-						givePlayerSaveMoney ( player, amount )
-						MySQL_SetString("houses", "Kasse", houseAmount - amount, "ID LIKE '"..vioGetElementData ( player, "housekey" ).."'")
-						triggerClientEvent ( "showHouseGui", player, houseAmount - amount )
-					else
-						outputChatBox ( "Du hast nicht genug Geld in deiner Hauskasse!", player, 125, 0, 0 )
-					end
-				elseif cmd == "give" then
-					if vioGetElementData ( player, "money" ) >= amount then
-						takePlayerSaveMoney ( player, amount )
-						MySQL_SetString("houses", "Kasse", houseAmount + amount, "ID LIKE '"..vioGetElementData ( player, "housekey" ).."'")
-						triggerClientEvent ( "showHouseGui", player, houseAmount + amount )
-					else
-						outputChatBox ( "Du hast nicht genug Geld!", player, 125, 0, 0 )
-					end
-				end
+				dbQuery( houseClickServer_func_DB, { player, cmd, amount }, handler, "SELECT Kasse FROM houses WHERE ID LIKE ?", vioGetElementData( player, "housekey" ) )
 			else
 				outputChatBox ( "Du bist nicht befugt!", player, 125, 0, 0 )
 			end

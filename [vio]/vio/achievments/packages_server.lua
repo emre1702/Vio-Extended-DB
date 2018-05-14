@@ -32,27 +32,25 @@ function packageSettings ()
 end
 addEventHandler ( "onResourceStart", getResourceRootElement(getThisResource()), packageSettings )
 
-function packageLoad ( player )
 
+local function packageLoad_DB ( qh, player, alreadytried )
 	local pname = getPlayerName ( player )
+	local result, errorcode, errormsg = dbPoll( qh, 0 )
+
 	vioSetElementData ( player, "foundpackages", 0 )
-	if not MySQL_GetString("packages", "Name", "Name LIKE '"..pname.."'") then
-		local result = mysql_query(handler, "INSERT INTO packages (Name, Paket1, Paket2, Paket3, Paket4, Paket5, Paket6, Paket7, Paket8, Paket9, Paket10, Paket11, Paket12, Paket13, Paket14, Paket15, Paket16, Paket17, Paket18, Paket19, Paket20, Paket21, Paket22, Paket23, Paket24, Paket25) VALUES ('"..pname.."','0','0','0','0','0','0','0','0','0','0','0','0','0','0','0','0','0','0','0','0','0','0','0','0','0' )")
-		if( not result) then
-			outputDebugString("Error executing the query: ("		.. mysql_errno(handler) .. ") " .. mysql_error(handler))
-		else
-			mysql_free_result(result)
+	if not result or not result[1] then
+		if alreadytried then
+			if not result then
+				outputDebugString("Error executing the query: ("		.. errorcode .. ") " .. errormsg)
+			end
+			return 
 		end
+		dbExec( handler, "INSERT INTO packages (Name, Paket1, Paket2, Paket3, Paket4, Paket5, Paket6, Paket7, Paket8, Paket9, Paket10, Paket11, Paket12, Paket13, Paket14, Paket15, Paket16, Paket17, Paket18, Paket19, Paket20, Paket21, Paket22, Paket23, Paket24, Paket25) VALUES (?,'0','0','0','0','0','0','0','0','0','0','0','0','0','0','0','0','0','0','0','0','0','0','0','0','0' )", pname )
+		dbQuery( packageLoad_DB, { player, true }, handler, "SELECT * FROM packages WHERE Name LIKE ?", pname )
+		return
 	end
-	
-	local dsatz
-	local result = mysql_query ( handler, "SELECT * from packages WHERE Name LIKE '"..pname.."'" )
-	if result then
-		if ( mysql_num_rows ( result ) > 0 ) then
-			dsatz = mysql_fetch_assoc ( result )
-			mysql_free_result ( result )
-		end
-	end
+
+	local dsatz = result[1] 
 	
 	for i = 1, 25 do
 		local paket = tonumber ( dsatz["Paket"..i] )
@@ -62,6 +60,11 @@ function packageLoad ( player )
 			vioSetElementData ( player, "foundpackages", vioGetElementData ( player, "foundpackages" ) + 1 )
 		end
 	end
+end
+
+
+function packageLoad ( player )
+	dbQuery( packageLoad_DB, { player, false }, handler, "SELECT * FROM packages WHERE Name LIKE ?", pname )
 end
 
 function packageSave ( player )
@@ -84,8 +87,8 @@ function pickupPackage ( player )
 			vioSetElementData ( player, "bonuspoints", vioGetElementData ( player, "bonuspoints" ) + 10 )
 			givePlayerMoney ( player, 100 )
 			triggerClientEvent ( player, "HudEinblendenMoney", getRootElement() )
-			MySQL_SetString("packages", "Paket"..number, vioGetElementData ( player, "package"..number ), "Name LIKE '"..pname.."'")
-			MySQL_SetString("userdata", "Bonuspunkte", vioGetElementData ( player, "bonuspoints" ), "Name LIKE '"..pname.."'")
+			dbExec( handler, "UPDATE packages SET Paket"..number.." = ? WHERE Name LIKE ?", vioGetElementData ( player, "package"..number ), pname )
+			dbExec( handler, "UPDATE userdata SET Bonuspunkte = ? WHERE Name LIKE ?", vioGetElementData ( player, "bonuspoints" ), pname )
 			triggerClientEvent ( player, "hidePackages", getRootElement(), package )
 		end
 	end
@@ -100,7 +103,7 @@ function PackageAchievCheck ( player )
 			vioSetElementData ( player, "collectr_achiev", "done" )																								-- Achiev: Collector
 			triggerClientEvent ( player, "showAchievmentBox", player, "  Der\n Sammler", 50, 10000 )															-- Achiev: Collector
 			vioSetElementData ( player, "bonuspoints", tonumber(vioGetElementData ( player, "bonuspoints" )) + 50 )												-- Achiev: Collector
-			MySQL_SetString("achievments", "DerSammler", vioGetElementData ( player, "collectr_achiev" ), "Name LIKE '"..getPlayerName(player).."'")			-- Achiev: Collector
+			dbExec( handler, "UPDATE achievments SET DerSammler = ? WHERE Name LIKE ?", vioGetElementData ( player, "collectr_achiev" ), getPlayerName(player) ) -- Achiev: Collector
 		end																																						-- Achiev: Collector
 	end
 end

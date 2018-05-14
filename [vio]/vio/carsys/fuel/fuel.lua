@@ -103,8 +103,7 @@ function saveBenzinForPrivVeh ( veh )
 	local pname = vioGetElementData ( veh, "owner" )
 	local slot = vioGetElementData ( veh, "carslotnr_owner" )
 	if pname and slot then
-		MySQL_SetString("vehicles", "Benzin", vioGetElementData(_G["privVeh"..pname..slot],"fuelstate"), "Besitzer LIKE '" ..pname.."' AND Slot LIKE '"..slot.."'")
-		MySQL_SetString("vehicles", "Distance", vioGetElementData(_G["privVeh"..pname..slot],"distance"), "Besitzer LIKE '" ..pname.."' AND Slot LIKE '"..slot.."'")
+		dbExec( handler, "UPDATE vehicles SET Benzin = ?, Distance = ? WHERE Besitzer LIKE ? AND Slot LIKE ?", vioGetElementData(_G["privVeh"..pname..slot],"fuelstate"), vioGetElementData(_G["privVeh"..pname..slot],"distance"), pname, slot )
 	end
 end
 

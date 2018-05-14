@@ -93,16 +93,15 @@ function mainTimer ()
 	
 	if hour == 4 and minute == 0 then
 		if weekday == 6 then
-			mysql_vio_query ( "UPDATE racing SET Name = 'none', MilliSekunden = '0', Sekunden = '0', Minuten = '3'" )
+			dbExec ( handler,"UPDATE racing SET Name = 'none', MilliSekunden = '0', Sekunden = '0', Minuten = '3'" )
 		end
-		mysql_vio_query ( "DELETE FROM warns WHERE extends <= '"..curtime.timestamp.."'" )
+		dbExec ( handler, "DELETE FROM warns WHERE extends <= '"..curtime.timestamp.."'" )
 		restartServer()
 	elseif hour == 3 and minute == 55 then
 		outputChatBox ( "ACHTUNG: Server startet neu in 5 Minuten!", getRootElement(), 200, 20, 20 )
 		local time = getRealTime()
 		if time.weekday == 6 then
-			local result = mysql_query ( handler, "TRUNCATE TABLE weed" )
-			mysql_free_result ( result )
+			dbExec ( handler, "TRUNCATE TABLE weed" )
 		end
 	elseif hour == 0 and minute == 0 then
 		playingTimeResetAtMidnight ()

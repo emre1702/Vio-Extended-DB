@@ -29,24 +29,30 @@ function createHorseShoePickup ( id, x, y, z )
 	)
 end
 
-function loadHorseShoesFound ( player, pname )
-
-	local string = MySQL_GetString ( "achievments", "Hufeisen", "Name LIKE '"..pname.."'" )
-	local val, i, pickup
-	local shoes = 0
-	for j = 1, 25 do
-		i = tostring ( j )
-		val = tonumber ( gettok ( string, j, string.byte ( '|' ) ) )
-		vioSetElementData ( player, "horseShoe"..i, val )
-		if val == 1 then
-			pickup = _G["horseShoe"..i]
-			triggerClientEvent ( player, "hideHorseshoe", player, pickup )
-			
-			shoes = shoes + 1
+local function loadHorseShoesFound_DB ( qh, player, pname ) 
+	local result = dbPoll( qh, 0 )
+	if result and result[1] then
+		local string = result[1]["achievments"]
+		local val, i, pickup
+		local shoes = 0
+		for j = 1, 25 do
+			i = tostring ( j )
+			val = tonumber ( gettok ( string, j, string.byte ( '|' ) ) )
+			vioSetElementData ( player, "horseShoe"..i, val )
+			if val == 1 then
+				pickup = _G["horseShoe"..i]
+				triggerClientEvent ( player, "hideHorseshoe", player, pickup )
+				
+				shoes = shoes + 1
+			end
 		end
-	end
-	vioSetElementData ( player, "totalHorseShoes", shoes )
-	vioSetElementData ( player, "horseShoesChanged", false )
+		vioSetElementData ( player, "totalHorseShoes", shoes )
+		vioSetElementData ( player, "horseShoesChanged", false )
+	end 
+end
+
+function loadHorseShoesFound ( player, pname )
+	dbQuery( loadHorseShoesFound_DB, { player, pname }, handler, "SELECT Hufeisen FROM achievments WHERE Name LIKE ?", pname )
 end
 
 function saveHorseShoesFound ( player, pname )
@@ -56,7 +62,7 @@ function saveHorseShoesFound ( player, pname )
 		for i = 1, 25 do
 			var = var..vioGetElementData ( player, "horseShoe"..i ).."|"
 		end
-		MySQL_SetString ( "achievments", "Hufeisen", var, "Name LIKE '"..pname.."'" )
+		dbExec( handler, "UPDATE achievments SET Hufeisen = ? WHERE Name LIKE ?", var, pname )
 	end
 end
 

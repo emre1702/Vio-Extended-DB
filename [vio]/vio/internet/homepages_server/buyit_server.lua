@@ -26,9 +26,9 @@ function loadOffers ()
 	GaragesOffers = {}
 	SpecialOffers = {}
 	
-	result = mysql_query ( handler, "SELECT * FROM buyit" )
+	result = dbPoll ( dbQuery( handler, "SELECT * FROM buyit" ), -1 )
 	
-	offers = mysql_fetch_assoc ( result )
+	offers = table.remove( result, 1 )
 	while offers do
 		local ID = tonumber ( offers["ID"] )
 		usedAuktionIDs[ID] = true
@@ -53,9 +53,8 @@ function loadOffers ()
 			_G[Typ.."Offers"][ID]["OptischesDatum"] = OptischesDatum
 			_G[Typ.."Offers"][ID]["Anzahl"] = Anzahl
 		
-		offers = mysql_fetch_assoc(result)
+		offers = table.remove( result, 1 )
 	end
-	mysql_free_result(result)
 	globalBuyItCheck ()
 end
 setTimer ( loadOffers, 500, 1 )
@@ -114,11 +113,25 @@ function endAuktion ( id, typ )
 	curSpecialOffers = 0	
 	]]
 	
-	MySQL_DelRow ( "buyit", "ID LIKE '"..id.."'" )
+	dbExec( handler, "REMOVE FROM buyit WHERE ID LIKE ?", id )
 	
 	_G[typ.."Offers"][id] = nil
 	usedAuktionIDs[id] = nil
 end
+
+
+local function buyItGiveItem_DB ( qh, pname, offerer )
+	local result = dbPoll( qh, 0 )
+	if result and result[1] then
+		local key = result[1]["ID"] 
+		if isElement ( getPlayerFromName ( pname ) ) then
+			vioSetElementData ( getPlayerFromName ( pname ), "housekey", key )
+		end
+		if isElement ( getPlayerFromName ( offerer ) ) then
+			vioSetElementData ( getPlayerFromName ( offerer ), "housekey", 0 )
+		end
+	end
+end 
 
 function buyItGiveItem ( typ, pname, anzahl, id, offerer )
 
@@ -128,29 +141,21 @@ function buyItGiveItem ( typ, pname, anzahl, id, offerer )
 		if isElement ( ingame ) and vioGetElementData ( ingame, "loggedin" ) and vioGetElementData ( ingame, "loggedin" ) == 1 then
 			vioSetElementData ( ingame, "drugs", vioGetElementData ( ingame, "drugs" ) + anzahl )
 		else
-			local drugs = MySQL_GetString ( "userdata", "Drogen", "Name LIKE '" ..pname.."'" )
-			MySQL_SetString ( "userdata", "Drogen", drugs + anzahl, "Name LIKE '" ..pname.."'" )
+			dbExec( handler, "UPDATE userdata SET Drogen = Drogen + ? WHERE Name LIKE ?", anzahl, pname )
 		end
 	elseif typ == "Mats" then
 		if isElement ( ingame ) and vioGetElementData ( ingame, "loggedin" ) and vioGetElementData ( ingame, "loggedin" ) == 1 then
 			vioSetElementData ( ingame, "mats", vioGetElementData ( ingame, "mats" ) + anzahl )
 		else
-			local mats = MySQL_GetString ( "userdata", "Drogen", "Name LIKE '" ..pname.."'" )
-			MySQL_SetString ( "userdata", "Drogen", mats + anzahl, "Name LIKE '" ..pname.."'" )
+			dbExec( handler, "UPDATE userdata SET Materials = Materials + ? WHERE Name LIKE ?", anzahl, pname )
 		end
 	elseif typ == "Veh" then
-		MySQL_SetString("vehicles", "Besitzer", pname, "AuktionsID LIKE '"..id.."'")
+		dbExec( handler, "UPDATE vehicles SET Besitzer = ? WHERE AuktionsID LIKE ?", pname, id )
 	elseif typ == "Prestige" then
-		MySQL_SetString ( "prestige", "Besitzer", pname, "Besitzer LIKE '" ..offerer.."'" )
+		dbExec( handler, "UPDATE prestige SET Besitzer = ? WHERE Besitzer LIKE ?", pname, offerer )
 	elseif typ == "Houses" then
-		MySQL_SetString ( "houses", "Besitzer", pname, "Besitzer LIKE '" ..offerer.."'" )
-		local key = MySQL_GetString ( "houses", "ID", "Besitzer LIKE '" ..pname.."'" )
-		if isElement ( getPlayerFromName ( pname ) ) then
-			vioSetElementData ( getPlayerFromName ( pname ), "housekey", key )
-		end
-		if isElement ( getPlayerFromName ( offerer ) ) then
-			vioSetElementData ( getPlayerFromName ( offerer ), "housekey", 0 )
-		end
+		dbExec( handler, "UPDATE houses SET Besitzer = ? WHERE Besitzer LIKE ?", pname, offerer )
+		dbQuery( buyItGiveItem_DB, { pname, offerer }, handler, "SELECT ID FROM houses WHERE Besitzer LIKE ?", pname )
 	elseif typ == "Special" then
 		sendBuyItMessage ( pname, "Du hast etwas besonderes ersteigert - ein Administrator wird sich in kuerze bei dir melden!" )
 		sendBuyItMessage ( "[Vio]Zipper", pname.." hat eine Sonderauktion gewonnen." )
@@ -183,12 +188,11 @@ end
 addEvent ( "getDescriptionForObject", true )
 addEventHandler ( "getDescriptionForObject", getRootElement(), getDescriptionForObject_func )
 
+
 function makeOffer_func ( typ, startGebot, description, timeToRun, count )
 
 	startGebot = math.floor ( math.abs ( startGebot ) )
 	count = math.floor ( math.abs ( count ) )
-	typ = MySQL_Save ( typ )
-	description = MySQL_Save ( description )
 	local player = client
 	local pname = getPlayerName ( player )
 	if typ and description and startGebot and tonumber ( timeToRun ) and ( tonumber ( count ) or count == nil ) then
@@ -234,7 +238,7 @@ function makeOffer_func ( typ, startGebot, description, timeToRun, count )
 				outputChatBox ( "Du besitzt kein Haus!", player, 125, 0, 0 )
 			end
 		elseif typ == "Prestige" then
-			if MySQL_DatasetExist ( "prestige", "Besitzer LIKE '"..MySQL_Save( getPlayerName ( player ) ).."'" ) then
+			if MySQL_DatasetExist ( "prestige", dbPrepareString( handler, "Besitzer LIKE ?", getPlayerName ( player ) ) ) then
 				outputChatBox ( "Du hast dein Prestige-Objekt erfolgreich zum Verkauf angeboten!", player, 0, 125, 0 )
 			else
 				validValues = false
@@ -266,11 +270,9 @@ function makeOffer_func ( typ, startGebot, description, timeToRun, count )
 			
 			timeToRunOptical = calcTimeToRunOptical ( minute + timeToRun, hour, yearday, year )
 			timeToRun = formatDateToInteger ( minute + timeToRun, hour, yearday, year )
-			local result = mysql_query(handler, "INSERT INTO buyit (ID, typ, Anbieter, Hoechstbietender, Hoechstgebot, LaeuftBis, Beschreibung, OptischesDatum, Anzahl) VALUES ('"..auktionID.."', '"..typ.."', '"..pname.."', '-', '"..startGebot.."', '"..timeToRun.."', '"..description.."', '"..timeToRunOptical.."', '"..count.."')")
+			local result = dbExec(handler, "INSERT INTO buyit (ID, typ, Anbieter, Hoechstbietender, Hoechstgebot, LaeuftBis, Beschreibung, OptischesDatum, Anzahl) VALUES ('"..auktionID.."', '"..typ.."', ?, '-', '"..startGebot.."', '"..timeToRun.."', ?, '"..timeToRunOptical.."', '"..count.."')", pname, description )
 			if( not result) then
-				outputDebugString("Error executing the query: (" .. mysql_errno(handler) .. ") " .. mysql_error(handler))
-			else
-				mysql_free_result(result)
+				outputDebugString( "Error executing the query makeOffer_func" )
 			end
 			_G[typ.."Offers"][ID]["LaeuftBis"] = timeToRun
 			_G[typ.."Offers"][ID]["OptischesDatum"] = timeToRunOptical
@@ -280,76 +282,78 @@ end
 addEvent ( "makeOffer", true )
 addEventHandler ( "makeOffer", getRootElement(), makeOffer_func )
 
+
+local function betForObject_func_DB ( qh, player, gebot, typ, id, curGebot, hoechstbietender, pname )
+	local result = dbPoll( qh, 0 )
+	if not result or not result[1] then
+		if vioGetElementData ( player, "bankmoney" ) >= gebot then
+			local betOK = true
+			if typ == "Veh" then
+				local carslot = buyItGetFreeCarslot ( pname )
+				if carslot then
+					vioSetElementData ( player, "carslot"..carslot, 3 )
+				else
+					betOK = false
+					reason = "Du hast keinen freien Fahrzeugslot!"
+				end
+			elseif typ == "House" then
+				if vioGetElementData ( player, "housekey" ) > 0 then
+					betOK = false
+					reason = "Du hast bereits ein Haus!"
+				end
+			elseif typ == "Prestige" then
+				if MySQL_DatasetExist("prestige", dbPrepareString( handler, "Besitzer LIKE ?", pname ) ) then
+					betOK = false
+					reason = "Du hast bereits ein Prestige-Objekt!"
+				end
+			end
+			if betOK then
+				-- Ehemaliger Hoechstbietender --
+				outputServerLog ( "BuyIt-Log: Bet: Von "..pname..", Typ: "..typ..", Gebot: "..gebot..", ID: "..id )
+				local target = getPlayerFromName ( hoechstbietender )
+				if target then
+					if typ == "Veh" then
+						for i = 1, 10 do
+							if vioGetElementData ( target, "carslot"..i ) == 3 then
+								vioSetElementData ( target, "carslot"..i, 0 )
+								break
+							end
+						end
+					end
+					outputChatBox ( "Du wurdest soeben von "..pname.." ueberboten!", target, 125, 0, 0 )
+					vioSetElementData ( target, "bankmoney", vioGetElementData ( target, "bankmoney" ) + curGebot )
+				elseif hoechstbietender ~= "-" then
+					dbExec( handler, "UPDATE userdata SET Bankgeld = Bankgeld + ? WHERE Name LIKE ?", curGebot, hoechstbietender )
+					buyItSendMail ( hoechstbietender.."@FORUMADRESSE", "Du wurdest bei einer Auktion von "..pname.." ueberboten!" )
+				end
+				-- Aktueller Hoechstbietender --
+				vioSetElementData ( player, "bankmoney", vioGetElementData ( player, "bankmoney" ) - gebot )
+				outputChatBox ( "Du hast dein Gebot erfolgreich abgegeben und bist nun Hoechstbietender!", player, 0, 125, 0 )
+				outputChatBox ( "Wir werden dich ueber den weiteren Verlauf der Auktion informieren!", player, 0, 125, 0 )
+				-- Auktionsdatei (InGame) --
+				_G[typ.."Offers"][id]["Hoechstbietender"] = pname
+				_G[typ.."Offers"][id]["Hoechstgebot"] = gebot
+				-- Auktionsdatei (MySQL) --
+				dbExec( handler, "UPDATE buyit SET Hoechstbietender=?, Hoechstgebot = ? WHERE ID LIKE ?", pname, gebot, id )
+			else
+				outputChatBox ( reason, player, 125, 0, 0 )
+			end
+		end
+	else
+		outputChatBox ( "Du kannst nur auf einen Artikel der selben Kathegorie zur gleichen Zeit bieten.", player, 125, 0, 0 )
+	end
+end
+
 function betForObject_func ( typ, id, gebot )
 
 	local player = client
 	local gebot = math.abs ( math.floor ( gebot ) )
-	local typ = MySQL_Save ( typ )
-	local id = tonumber ( MySQL_Save ( id ) )
 	if _G[typ.."Offers"][id]["LaeuftBis"] then
 		local curGebot = tonumber ( _G[typ.."Offers"][id]["Hoechstgebot"] )
 		local hoechstbietender = _G[typ.."Offers"][id]["Hoechstbietender"]
 		local pname = getPlayerName ( player )
 		if curGebot < gebot then
-			if not MySQL_DatasetExist("buyit", "Hoechstbietender LIKE '"..pname.."' AND Typ LIKE '"..typ.."'") then
-				if vioGetElementData ( player, "bankmoney" ) >= gebot then
-					local betOK = true
-					if typ == "Veh" then
-						local carslot = buyItGetFreeCarslot ( pname )
-						if carslot then
-							vioSetElementData ( player, "carslot"..carslot, 3 )
-						else
-							betOK = false
-							reason = "Du hast keinen freien Fahrzeugslot!"
-						end
-					elseif typ == "House" then
-						if vioGetElementData ( player, "housekey" ) > 0 then
-							betOK = false
-							reason = "Du hast bereits ein Haus!"
-						end
-					elseif typ == "Prestige" then
-						if MySQL_DatasetExist("prestige", "Besitzer LIKE '"..pname.."'") then
-							betOK = false
-							reason = "Du hast bereits ein Prestige-Objekt!"
-						end
-					end
-					if betOK then
-						-- Ehemaliger Hoechstbietender --
-						outputServerLog ( "BuyIt-Log: Bet: Von "..pname..", Typ: "..typ..", Gebot: "..gebot..", ID: "..id )
-						local target = getPlayerFromName ( hoechstbietender )
-						if target then
-							if typ == "Veh" then
-								for i = 1, 10 do
-									if vioGetElementData ( target, "carslot"..i ) == 3 then
-										vioSetElementData ( target, "carslot"..i, 0 )
-										break
-									end
-								end
-							end
-							outputChatBox ( "Du wurdest soeben von "..pname.." ueberboten!", target, 125, 0, 0 )
-							vioSetElementData ( target, "bankmoney", vioGetElementData ( target, "bankmoney" ) + curGebot )
-						elseif hoechstbietender ~= "-" then
-							local money = MySQL_GetString("userdata", "Bankgeld", "Name LIKE '"..hoechstbietender.."'")
-							MySQL_SetString("userdata", "Bankgeld", money + curGebot, "Name LIKE '"..hoechstbietender.."'")
-							buyItSendMail ( hoechstbietender.."@FORUMADRESSE", "Du wurdest bei einer Auktion von "..pname.." ueberboten!" )
-						end
-						-- Aktueller Hoechstbietender --
-						vioSetElementData ( player, "bankmoney", vioGetElementData ( player, "bankmoney" ) - gebot )
-						outputChatBox ( "Du hast dein Gebot erfolgreich abgegeben und bist nun Hoechstbietender!", player, 0, 125, 0 )
-						outputChatBox ( "Wir werden dich ueber den weiteren Verlauf der Auktion informieren!", player, 0, 125, 0 )
-						-- Auktionsdatei (InGame) --
-						_G[typ.."Offers"][id]["Hoechstbietender"] = pname
-						_G[typ.."Offers"][id]["Hoechstgebot"] = gebot
-						-- Auktionsdatei (MySQL) --
-						MySQL_SetString("buyit", "Hoechstbietender", pname, "ID LIKE '"..id.."'")
-						MySQL_SetString("buyit", "Hoechstgebot", gebot, "ID LIKE '"..id.."'")
-					else
-						outputChatBox ( reason, player, 125, 0, 0 )
-					end
-				end
-			else
-				outputChatBox ( "Du kannst nur auf einen Artikel der selben Kathegorie zur gleichen Zeit bieten.", player, 125, 0, 0 )
-			end
+			dbQuery( betForObject_func_DB, { player, gebot, typ, id, curGebot, hoechstbietender, pname }, handler, "SELECT true FROM buyit WHERE Hoechstbietender LIKE ? AND Typ LIKE ?", pname, typ )
 		else
 			outputChatBox ( "Dein aktuelles Gebot ist zu niedrig! Bitte aktualisiere deine Seite!", player, 125, 0, 0 )
 		end

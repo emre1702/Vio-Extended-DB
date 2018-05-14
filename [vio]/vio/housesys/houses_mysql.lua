@@ -5,12 +5,12 @@
 function houseCreation()
 
 	local houseamount = 0
-	local result = mysql_query(handler, "SELECT * FROM houses")
+	local result,errorcode, errormsg = dbPoll( dbQuery( handler, "SELECT * FROM houses" ), -1 )
 	if( not result) then
-		 outputDebugString("Error executing the query: (" .. mysql_errno(handler) .. ") " .. mysql_error(handler))
+		 outputDebugString("Error executing the query: (" ..errorcode .. ") " .. errormsg)
 	else
-		if(mysql_num_rows(result) > 0) then
-			local dsatz = mysql_fetch_assoc(result)
+		if #result > 0 then
+			local dsatz = table.remove ( result, 1 )
 			while( dsatz ) do
 				houseamount = houseamount + 1
 				
@@ -28,7 +28,7 @@ function houseCreation()
 				createHouse ( id, x, y, z, owner, cost, min, int, kasse, rent )
 				
 				if not ( owner == "none" ) then
-					local lastLogin = MySQL_GetOldString ( "players", "LastLogin", "Name LIKE '"..owner.."'" )
+					--[[local lastLogin = MySQL_GetOldString ( "players", "LastLogin", "Name LIKE '"..owner.."'" )
 					if lastLogin then
 						lastLogin = tonumber ( lastLogin )
 						if lastLogin ~= 0 then
@@ -40,18 +40,17 @@ function houseCreation()
 								owner = "none"
 							end
 						end
-					end
+					end]]
 				end
 				
 				loadGangData ( id )
 				
-				dsatz = mysql_fetch_assoc ( result )
+				dsatz = table.remove ( result, 1 )
 			end
 			outputServerLog("Es wurden "..houseamount.." Haeuser gefunden")
 		else
 			outputServerLog("Es wurden keine Haueser gefunden")
 		end
-		mysql_free_result ( result )
 	end
 end
 setTimer ( houseCreation, 5000, 1 )

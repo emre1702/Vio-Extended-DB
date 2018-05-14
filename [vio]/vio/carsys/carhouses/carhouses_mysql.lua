@@ -45,24 +45,22 @@ MySQLCarHousesCars = {}
 
 function createCarhouses ()
 
-	result = mysql_query ( handler, "SELECT * FROM carhouses_icons" )
-	if ( mysql_num_rows ( result ) > 0 ) then
-		carHousesData = mysql_fetch_assoc ( result )
+	result = dbPoll ( dbQuery ( handler, "SELECT * FROM carhouses_icons" ), -1 )
+	if result and result[1] then
+		carHousesData = table.remove( result, 1 )
 		mySQLCarhouseCreate ()
 	else
-		mysql_free_result ( result )
 		outputServerLog ( "Es wurden keine Autohaeuser gefunden" )
 	end
 end
 
 function createVehiclesForCarhouses ()
 
-	result = mysql_query ( handler, "SELECT * FROM carhouses_vehicles" )
-	if ( mysql_num_rows ( result ) > 0 ) then
-		carHouseVehicleData = mysql_fetch_assoc ( result )
+	result = dbPoll( dbQuery ( handler, "SELECT * FROM carhouses_vehicles" ), -1 )
+	if result and result[1] then
+		carHouseVehicleData = table.remove( result, 1 )
 		mySQLCarhouseVehicleCreate ()
 	else
-		mysql_free_result ( result )
 		outputServerLog ( "Es wurden keine Autohaus-Fahrzeuge gefunden" )
 	end
 end
@@ -97,11 +95,9 @@ function mySQLCarhouseVehicleCreate ()
 	
 	MySQLCarHousesCars[typ] = true
 	
-	carHouseVehicleData = mysql_fetch_assoc ( result )
+	carHouseVehicleData = table.remove( result, 1 )
 	if carHouseVehicleData then
 		mySQLCarhouseVehicleCreate ()
-	else
-		mysql_free_result ( result )
 	end
 end
 
@@ -149,11 +145,10 @@ function mySQLCarhouseCreate ()
 		end
 	)
 	
-	carHousesData = mysql_fetch_assoc ( result )
+	carHousesData = table.remove( result, 1 )
 	if carHousesData then
 		mySQLCarhouseCreate ()
 	else
-		mysql_free_result ( result )
 		outputServerLog ( "Es wurden "..( #MySQLCarhouses ).." Autohaeuser gefunden!")
 		createVehiclesForCarhouses ()
 	end

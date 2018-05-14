@@ -40,7 +40,7 @@ function buyRCVehicleVan ( veh )
 					local slot = vioGetElementData ( vehicle, "carslotnr_owner" )
 					local id = rcVehicleDBIDs[veh]
 					
-					mysql_vio_query ( "UPDATE vehicles SET rc = '"..id.."' WHERE Besitzer LIKE '"..pname.."' AND Slot LIKE '"..slot.."'" )
+					dbExec ( handler, "UPDATE vehicles SET rc = ? WHERE Besitzer LIKE ? AND Slot LIKE ?", id, pname, slot )
 					vioSetElementData ( player, "money", vioGetElementData ( player, "money" ) - price + 7500 )
 					
 					vioSetElementData ( vehicle, "rcVehicle", id )
