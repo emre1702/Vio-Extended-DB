@@ -1,8 +1,6 @@
 ﻿
 SET SQL_MODE="NO_AUTO_VALUE_ON_ZERO";
 
-USE `ni257613_3_DB`;
-
 CREATE TABLE IF NOT EXISTS `achievments` (
   `Name` varchar(50) NOT NULL,
   `SchlaflosInSA` varchar(50) NOT NULL DEFAULT '0',
