@@ -39,7 +39,7 @@ end]]
 
 function isRegistered ( pname )
 
-	if MySQL_DatasetExist ( "players", dbPrepareString( handler, "Name LIKE ?", pname ) then
+	if MySQL_DatasetExist ( "players", dbPrepareString( handler, "Name LIKE ?", pname )) then
 		return true
 	--[[else
 		local result = mysql_query ( handler_old, "SELECT * from players WHERE Name LIKE '"..pname.."'" )
