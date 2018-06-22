@@ -199,8 +199,8 @@ function register_func ( player, passwort, bday, bmon, byear, geschlecht )
 			local passwort = md5 ( passwort .. salt )
 			local lastLoginInt = getSecTime ( 0 )
 			
-			local id = dbPoll( dbQuery( handler, "SELECT id FROM idcounter" ), -1 )
-			vioSetElementData ( player, "playerid", tonumber( id[1]["id"] ) )
+			local id = dbPoll( dbQuery( handler, "SELECT id FROM idcounter" ), -1 )[1]["id"]
+			vioSetElementData ( player, "playerid", tonumber( id ) )
 			dbExec( handler, "UPDATE idcounter SET id = id + 1" )
 			
 			local result = dbExec(handler, "INSERT INTO players ( id, Name, Serial, IP, Last_login, Geburtsdatum_Tag, Geburtsdatum_Monat, Geburtsdatum_Jahr, Passwort, Geschlecht, RegisterDatum, Salt, LastLogin) VALUES ( '"..id.."', ?, ?, , '"..lastlogin.."', "..tonumber ( bday)..", "..tonumber ( bmon)..", "..tonumber ( byear)..", ?, ?, '"..registerdatum.."', '"..salt.."', '"..lastLoginInt.."' )", pname, getPlayerSerial( player ), getPlayerIP( player ), passwort, geschlecht )
