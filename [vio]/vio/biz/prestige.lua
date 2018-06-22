@@ -23,6 +23,7 @@ function createPrestigeObjects ()
 		outputServerLog ( "Es wurden ".. length .." prestige Objekte gefunden und "..deletedPrestige.." Besitzer enteignet." )
 	end	
 end
+addEventHandler("onResourceStart", resourceRoot, createPrestigeObjects)
 
 function prestigePickupHit ( player )
 

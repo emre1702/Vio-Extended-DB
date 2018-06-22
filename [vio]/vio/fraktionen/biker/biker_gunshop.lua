@@ -38,7 +38,7 @@ function ddasettings ()
 
 	result = dbPoll( dbQuery( handler, "SELECT DepotGeld FROM fraktionen WHERE Name LIKE ?", mafia ), -1 )
 	if result and result[1] then
-		BikerFamkasse = tonumber( d["DepotGeld"] )
+		BikerFamkasse = tonumber( result[1]["DepotGeld"] )
 	end
 end
 addEventHandler("onResourceStart", getResourceRootElement(getThisResource()), ddasettings )

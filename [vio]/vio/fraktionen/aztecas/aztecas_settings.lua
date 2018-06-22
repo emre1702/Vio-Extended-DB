@@ -33,7 +33,7 @@
 
 	result = dbPoll( dbQuery( handler, "SELECT DepotGeld FROM fraktionen WHERE Name LIKE ?", mafia ), -1 )
 	if result and result[1] then
-		AztecasFamkasse = tonumber( d["DepotGeld"] )
+		AztecasFamkasse = tonumber( result[1]["DepotGeld"] )
 	end
 end
 addEventHandler("onResourceStart", getResourceRootElement(getThisResource()), aztecasData_load )

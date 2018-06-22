@@ -19,6 +19,7 @@ function privVeh_spawning()
 		end
 	end
 end
+addEventHandler("onResourceStart", resourceRoot, privVeh_spawning)
 
 function mySQLCarCreate ()
 

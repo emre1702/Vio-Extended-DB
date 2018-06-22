@@ -3,7 +3,7 @@
 	if result and result[1] then
 		vioSetElementData ( player, "fishingSkill", tonumber ( result[1]["fishing"] ) )
 		vioSetElementData ( player, "fishingSkillOld", vioGetElementData ( player, "fishingSkill" ) )
-		vioSetElementData ( player, "gambleSkill",  tonumber ( result[1]["gamble"] ) ) )
+		vioSetElementData ( player, "gambleSkill",  tonumber ( result[1]["gamble"] ) )
 	end
 end
 

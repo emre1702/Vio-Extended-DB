@@ -61,6 +61,7 @@ function loadBotCarTypes ()
 		end
 	end
 end
+addEventHandler("onResourceStart", resourceRoot, loadBotCarTypes)
 
 
 function createNewCarAI ()

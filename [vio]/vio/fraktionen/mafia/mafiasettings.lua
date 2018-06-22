@@ -32,7 +32,7 @@
 
 	result = dbPoll( dbQuery( handler, "SELECT DepotGeld FROM fraktionen WHERE Name LIKE ?", mafia ), -1 )
 	if result and result[1] then
-		MafiaFamkasse = tonumber( d["DepotGeld"] )
+		MafiaFamkasse = tonumber( result[1]["DepotGeld"] )
 	end
 end
 addEventHandler("onResourceStart", getResourceRootElement(getThisResource()), mafiasettings )

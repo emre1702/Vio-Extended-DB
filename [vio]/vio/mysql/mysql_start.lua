@@ -3,7 +3,7 @@ local gMysqlHost = "localhost"
 local gMysqlUser = "root"
 local gMysqlPass = ""
 local gMysqlDatabase1 = "vio"
-local gMysqlDatabase2 = "vio_old"
+--local gMysqlDatabase2 = "vio_old"
 
 local function MySQL_Startup()
 	handler = dbConnect("mysql", "dbname="..gMysqlDatabase1..";host="..gMysqlHost, gMysqlUser, gMysqlPass, "tag=vio_extended;multi_statements=1")
@@ -11,10 +11,6 @@ local function MySQL_Startup()
 		outputDebugString("Couldn't run query: Unable to connect to the MySQL server!")
 		outputDebugString("Please shutdown the server and start the MySQL server!")
 	end	
-	createPrestigeObjects()
-	loadBotCarTypes()
-	setBizData()
-	privVeh_spawning()
 	--[[handler_old = mysql_connect(gMysqlHost, gMysqlUser, gMysqlPass, gMysqlDatabase2)
 	if( not handler_old) then
 		outputDebugString("Couldn't run query: Unable to connect to the MySQL server!")

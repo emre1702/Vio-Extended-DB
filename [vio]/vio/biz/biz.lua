@@ -98,6 +98,7 @@
 	
 	setTimer ( updateBizKasse, 300000, 1 )
 end
+addEventHandler("onResourceStart", resourceRoot, setBizData)
 
 
 function updateBizKasse ()
